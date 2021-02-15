@@ -1,0 +1,4 @@
+peripherals.c:103:6:FTM0_init	8	static
+peripherals.c:152:6:UART0_init	8	static
+peripherals.c:159:6:BOARD_InitPeripherals	8	static
+peripherals.c:169:6:BOARD_InitBootPeripherals	8	static

@@ -1,0 +1,4 @@
+zepif.c:168:1:zepif_linkoutput	24	static
+zepif.c:108:1:zepif_udp_recv	24	static
+zepif.c:98:1:zep_lowpan_timer	8	static
+zepif.c:222:1:zepif_init	24	static

@@ -1,0 +1,8 @@
+ip4.c:117:1:ip4_set_default_multicast_netif	0	static
+ip4.c:152:1:ip4_route	4	static
+ip4.c:426:1:ip4_input	32	static
+ip4.c:787:1:ip4_output_if	48	static
+ip4.c:827:1:ip4_output_if_src	48	static
+ip4.c:840:1:ip4_output_if_opt_src	56	static
+ip4.c:802:1:ip4_output_if_opt	20	static
+ip4.c:1028:1:ip4_output	56	static

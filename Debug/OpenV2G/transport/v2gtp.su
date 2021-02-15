@@ -1,0 +1,2 @@
+v2gtp.c:43:5:write_v2gtpHeader	8	static
+v2gtp.c:69:5:read_v2gtpHeader	4	static

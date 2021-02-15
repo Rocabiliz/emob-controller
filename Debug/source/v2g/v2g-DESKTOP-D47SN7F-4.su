@@ -1,0 +1,14 @@
+v2g.c:33:12:serializeEXI2Stream	24	static
+v2g.c:44:12:deserializeStream2EXI	24	static
+v2g.c:57:13:secc_discovery_protocol	64	static
+v2g.c:147:13:v2g_session	56	static
+v2g.c:208:6:set_supported_app_protocols	8	static
+v2g.c:226:9:supported_app_protocol_req	1232	static
+v2g.c:317:9:handle_session_setup	16680	static
+v2g.c:369:9:handle_service_discovery	24	static
+v2g.c:397:9:handle_service_detail	24	static
+v2g.c:417:9:handle_payment_service_selection	24	static
+v2g.c:447:9:handle_payment_details	32	static
+v2g.c:465:9:handle_authorization	24	static
+v2g.c:486:6:v2g_init	16	static
+v2g.c:493:6:sdp_init	16	static

@@ -1,0 +1,3 @@
+httpsrv_task.c:384:6:httpsrv_http_process	48	static
+httpsrv_task.c:168:13:httpsrv_session_task	24	static
+httpsrv_task.c:39:6:httpsrv_server_task	56	static

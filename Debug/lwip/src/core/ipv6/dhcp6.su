@@ -1,0 +1,9 @@
+dhcp6.c:698:1:dhcp6_recv	48	static
+dhcp6.c:452:1:dhcp6_information_request	32	static
+dhcp6.c:185:1:dhcp6_set_struct	16	static
+dhcp6.c:206:6:dhcp6_cleanup	8	static
+dhcp6.c:299:1:dhcp6_enable_stateful	0	static
+dhcp6.c:316:1:dhcp6_enable_stateless	24	static
+dhcp6.c:346:1:dhcp6_disable	16	static
+dhcp6.c:586:1:dhcp6_nd6_ra_trigger	16	static
+dhcp6.c:799:1:dhcp6_tmr	16	static

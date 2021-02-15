@@ -1,0 +1,14 @@
+lwip_httpsrv_freertos.c:147:12:cgi_rtc_data	80	static
+lwip_httpsrv_freertos.c:192:12:cgi_example	168	static
+lwip_httpsrv_freertos.c:249:13:cgi_get_varval	40	static
+lwip_httpsrv_freertos.c:288:12:ssi_date_time	24	static
+lwip_httpsrv_freertos.c:302:13:cgi_urldecode	24	static
+lwip_httpsrv_freertos.c:330:10:ws_echo_connect	16	static
+lwip_httpsrv_freertos.c:338:10:ws_echo_disconnect	16	static
+lwip_httpsrv_freertos.c:346:10:ws_echo_message	16	static
+lwip_httpsrv_freertos.c:366:10:ws_echo_error	16	static
+lwip_httpsrv_freertos.c:381:13:http_srv_txt	16	static
+lwip_httpsrv_freertos.c:389:13:stack_init	48	static
+lwip_httpsrv_freertos.c:432:13:http_server_socket_init	64	static
+lwip_httpsrv_freertos.c:462:13:main_thread	16	static
+lwip_httpsrv_freertos.c:475:5:main	24	static

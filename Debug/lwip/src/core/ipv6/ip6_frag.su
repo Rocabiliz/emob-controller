@@ -1,0 +1,5 @@
+ip6_frag.c:148:1:ip6_reass_free_complete_datagram	64	static
+ip6_frag.c:695:1:ip6_frag_free_pbuf_custom	8	static
+ip6_frag.c:113:1:ip6_reass_tmr	8	static
+ip6_frag.c:272:1:ip6_reass	80	static
+ip6_frag.c:720:1:ip6_frag	80	static

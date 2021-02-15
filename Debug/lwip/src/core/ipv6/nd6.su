@@ -1,0 +1,17 @@
+nd6.c:1254:1:nd6_send_na	48	static
+nd6.c:1329:1:nd6_send_rs	48	static
+nd6.c:1181:1:nd6_send_ns	48	static
+nd6.c:2176:1:nd6_send_q.part.2	48	static
+nd6.c:147:1:nd6_duplicate_addr_detected	16	static
+nd6.c:1529:1:nd6_free_neighbor_cache_entry.part.4	24	static
+nd6.c:1422:1:nd6_new_neighbor_cache_entry	40	static
+nd6.c:287:1:nd6_input	80	static
+nd6.c:959:1:nd6_tmr	592	static
+nd6.c:1613:1:nd6_clear_destination_cache	0	static
+nd6.c:1742:1:nd6_find_route	16	static
+nd6.c:2247:1:nd6_get_next_hop_addr_or_queue	48	static
+nd6.c:2288:1:nd6_get_destination_mtu	8	static
+nd6.c:2318:1:nd6_reachability_hint	20	static
+nd6.c:2362:1:nd6_cleanup_netif	16	static
+nd6.c:2399:1:nd6_adjust_mld_membership	12	static
+nd6.c:2426:1:nd6_restart_netif	0	static

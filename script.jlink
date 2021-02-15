@@ -1,0 +1,7 @@
+ExitOnError 1
+r
+h
+loadfile "C:\Users\Roque\OneDrive - Universidade de Lisboa\Projects\eMobility Controller\Software\frdmk66f_lwip_httpsrv_freertos__testing_V3\Debug\frdmk66f_lwip_httpsrv_freertos__testing_V3.hex"
+qc
+
+qc

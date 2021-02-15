@@ -1,0 +1,4 @@
+BitEncoderChannel.c:44:5:encode	0	static
+BitEncoderChannel.c:52:5:encodeBoolean	0	static
+BitEncoderChannel.c:62:5:encodeNBitUnsignedInteger	0	static
+BitEncoderChannel.c:73:5:encodeFinish	0	static

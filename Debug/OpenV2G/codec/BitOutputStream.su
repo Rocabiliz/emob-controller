@@ -1,0 +1,2 @@
+BitOutputStream.c:40:5:writeBits	20	static
+BitOutputStream.c:116:5:flush	8	static

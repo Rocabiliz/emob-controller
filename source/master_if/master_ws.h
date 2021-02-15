@@ -1,0 +1,4 @@
+#ifndef MASTERIF_MASTERWS_H_
+#define MASTERIF_MASTERWS_H_
+
+#endif // MASTERIF_MASTERWS_H_

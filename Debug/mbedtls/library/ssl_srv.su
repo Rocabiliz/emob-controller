@@ -1,0 +1,5 @@
+ssl_srv.c:3640:12:ssl_parse_client_psk_identity	48	static
+ssl_srv.c:3392:12:ssl_parse_client_dh_public	32	static
+ssl_srv.c:1184:12:ssl_parse_client_hello	224	static
+ssl_srv.c:3543:12:ssl_parse_encrypted_pms	168	static
+ssl_srv.c:4246:5:mbedtls_ssl_handshake_server_step	144	static

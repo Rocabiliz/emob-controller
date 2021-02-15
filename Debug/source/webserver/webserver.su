@@ -1,0 +1,5 @@
+webserver.c:344:13:webserver	64	static
+webserver.c:77:12:cgi_rtc_data	64	static
+webserver.c:215:12:ssi_date_time	8	static
+webserver.c:121:12:cgi_example	160	static
+webserver.c:353:6:webserver_init	16	static

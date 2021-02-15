@@ -1,0 +1,3 @@
+BitDecoderChannel.c:43:5:decode	16	static
+BitDecoderChannel.c:57:5:decodeBoolean	16	static
+BitDecoderChannel.c:64:5:decodeNBitUnsignedInteger	4	static

@@ -1,0 +1,11 @@
+v2g.c:33:13:secc_discovery_protocol	72	static
+v2g.c:126:13:v2g_session	48	static
+v2g.c:235:35:get_supported_app_protocols	784	static
+v2g.c:254:9:supported_app_protocol_req	2008	static
+v2g.c:336:9:handle_session_setup	24	static
+v2g.c:354:9:handle_service_discovery	24	static
+v2g.c:382:9:handle_service_detail	24	static
+v2g.c:402:9:handle_payment_service_selection	24	static
+v2g.c:432:9:handle_payment_details	32	static
+v2g.c:450:9:handle_authorization	24	static
+v2g.c:471:6:v2g_init	24	static

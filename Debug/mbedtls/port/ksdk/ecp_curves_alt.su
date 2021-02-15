@@ -1,0 +1,11 @@
+ecp_curves_alt.c:1307:12:ecp_mod_p448	168	static
+ecp_curves_alt.c:1250:12:ecp_mod_p255	72	static
+ecp_curves_alt.c:1201:12:ecp_mod_p521	96	static
+ecp_curves_alt.c:918:12:ecp_mod_p192	48	static
+ecp_curves_alt.c:1128:12:ecp_mod_p384	120	static
+ecp_curves_alt.c:1475:12:ecp_mod_p256k1	88	static
+ecp_curves_alt.c:1070:12:ecp_mod_p224	88	static
+ecp_curves_alt.c:1091:12:ecp_mod_p256	104	static
+ecp_curves_alt.c:1442:12:ecp_mod_p192k1	88	static
+ecp_curves_alt.c:1456:12:ecp_mod_p224k1	88	static
+ecp_curves_alt.c:772:5:mbedtls_ecp_group_load	32	static

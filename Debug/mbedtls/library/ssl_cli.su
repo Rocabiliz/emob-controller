@@ -1,0 +1,4 @@
+ssl_cli.c:2152:12:ssl_write_encrypted_pms	48	static
+ssl_cli.c:760:12:ssl_write_client_hello	72	static
+ssl_cli.c:2027:12:ssl_check_server_ecdh_params	24	static
+ssl_cli.c:3503:5:mbedtls_ssl_handshake_client_step	152	static

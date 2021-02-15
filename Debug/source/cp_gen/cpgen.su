@@ -1,0 +1,7 @@
+cpgen.c:16:8:calcCCSAcDutyCycle	16	static
+cpgen.c:31:8:calcCCSPPMaxCurr	16	static
+cpgen.c:62:16:calcCCSCPState	16	static
+cpgen.c:88:17:initCP	48	static
+cpgen.c:119:6:setCPFreq	16	static
+cpgen.c:129:6:setCPDutyCycle	16	static
+cpgen.c:143:6:handleCPGen	32	static

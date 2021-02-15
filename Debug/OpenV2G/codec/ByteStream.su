@@ -1,0 +1,2 @@
+ByteStream.c:44:5:readBytesFromFile	24	static
+ByteStream.c:68:5:writeBytesToFile	16	static

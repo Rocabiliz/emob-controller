@@ -1,0 +1,10 @@
+lowpan6.c:343:1:lowpan6_frag	104	static
+lowpan6.c:566:1:lowpan6_output	72	static
+lowpan6.c:646:1:lowpan6_input	72	static
+lowpan6.c:262:1:lowpan6_calc_crc	8	static
+lowpan6.c:320:1:lowpan6_tmr	24	static
+lowpan6.c:499:1:lowpan6_set_context	8	static
+lowpan6.c:524:1:lowpan6_set_short_addr	0	static
+lowpan6.c:875:1:lowpan6_if_init	0	static
+lowpan6.c:897:1:lowpan6_set_pan_id	0	static
+lowpan6.c:914:1:tcpip_6lowpan_input	0	static

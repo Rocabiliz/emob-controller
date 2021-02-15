@@ -1,0 +1,3 @@
+lowpan6_common.c:65:1:lowpan6_get_address_mode	24	static
+lowpan6_common.c:132:1:lowpan6_compress_headers	184	static
+lowpan6_common.c:779:1:lowpan6_decompress	88	static

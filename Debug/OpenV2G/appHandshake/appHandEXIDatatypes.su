@@ -1,0 +1,4 @@
+appHandEXIDatatypes.c:43:6:init_appHandEXIDocument	0	static
+appHandEXIDatatypes.c:48:6:init_appHandAppProtocolType	0	static
+appHandEXIDatatypes.c:51:6:init_appHandAnonType_supportedAppProtocolReq	0	static
+appHandEXIDatatypes.c:55:6:init_appHandAnonType_supportedAppProtocolRes	0	static

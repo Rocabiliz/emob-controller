@@ -1,0 +1,16 @@
+fsl_mmcau.c:79:17:mmcau_AesCrypt.part.3	296	static
+fsl_mmcau.c:255:10:MMCAU_AES_SetKey	296	static
+fsl_mmcau.c:304:10:MMCAU_AES_EncryptEcb	16	static
+fsl_mmcau.c:309:10:MMCAU_AES_DecryptEcb	16	static
+fsl_mmcau.c:314:10:MMCAU_DES_ChkParity	16	static
+fsl_mmcau.c:344:10:MMCAU_DES_EncryptEcb	32	static
+fsl_mmcau.c:349:10:MMCAU_DES_DecryptEcb	32	static
+fsl_mmcau.c:355:10:MMCAU_MD5_InitializeOutput	40	static
+fsl_mmcau.c:387:10:MMCAU_MD5_HashN	112	static
+fsl_mmcau.c:393:10:MMCAU_MD5_Update	112	static
+fsl_mmcau.c:399:10:MMCAU_SHA1_InitializeOutput	48	static
+fsl_mmcau.c:431:10:MMCAU_SHA1_HashN	112	static
+fsl_mmcau.c:437:10:MMCAU_SHA1_Update	112	static
+fsl_mmcau.c:443:10:MMCAU_SHA256_InitializeOutput	48	static
+fsl_mmcau.c:483:10:MMCAU_SHA256_HashN	112	static
+fsl_mmcau.c:489:10:MMCAU_SHA256_Update	112	static

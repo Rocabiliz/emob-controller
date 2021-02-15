@@ -1,0 +1,253 @@
+/*
+ * Copyright (c) 2016, Freescale Semiconductor, Inc.
+ * Copyright 2016-2019 NXP
+ * All rights reserved.
+ *
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+/*******************************************************************************
+ * Includes
+ ******************************************************************************/
+/* General */
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <ctype.h>
+#include <string.h>
+
+/* FreeRTOS kernel includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "timers.h"
+#include "portable.h"
+
+/* Freescale includes. */
+#include "fsl_device_registers.h"
+#include "fsl_debug_console.h"
+#include "board.h"
+#include "pin_mux.h"
+#include "clock_config.h"
+
+/* Peripherals include */
+#include "peripherals.h"
+#include "fsl_ftm.h"
+#include "fsl_gpio.h"
+
+/* Software components includes */
+#include "cp_gen/cpgen.h"
+#include "slac/slac.h"
+#include "v2g/v2g.h"
+#include "charger/charger.h"
+#include "webserver/webserver.h"
+
+/* lwip include */
+#include "lwip/opt.h"
+#include "lwip/netif.h"
+#include "lwip/sys.h"
+#include "lwip/arch.h"
+#include "lwip/api.h"
+#include "lwip/tcpip.h"
+#include "lwip/ip.h"
+#include "lwip/netifapi.h"
+#include "lwip/sockets.h"
+#include "netif/etharp.h"
+#include "enet_ethernetif.h"
+#include "httpsrv.h"
+#include "mdns.h"
+
+/* mbed tls */
+#include "ksdk_mbedtls.h"
+#include "mbedtls/certs.h"
+
+/*******************************************************************************
+ * Definitions
+ ******************************************************************************/
+#define BOARD_SW_GPIO BOARD_SW3_GPIO
+#define BOARD_SW_GPIO_PIN BOARD_SW3_GPIO_PIN
+
+/* Task priorities. */
+
+/* Timer settings */
+volatile bool ftmIsrFlag = false;
+volatile uint32_t milisecondCounts = 0U;
+
+void FTM0_IRQHANDLER(void) {
+    /* Clear interrupt flag.*/
+    FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
+    ftmIsrFlag = true;
+}
+
+/* IP address configuration. */
+#define configIP_ADDR0 192
+#define configIP_ADDR1 168
+#define configIP_ADDR2 1
+#define configIP_ADDR3 144
+
+/* Netmask configuration. */
+#define configNET_MASK0 255
+#define configNET_MASK1 255
+#define configNET_MASK2 255
+#define configNET_MASK3 0
+
+/* Gateway address configuration. */
+#define configGW_ADDR0 192
+#define configGW_ADDR1 168
+#define configGW_ADDR2 1
+#define configGW_ADDR3 1
+
+/* MAC address configuration. */
+#define configMAC_ADDR                     \
+    {                                      \
+        0x02, 0x12, 0x13, 0x10, 0x15, 0x11 \
+    }
+
+/* Address of PHY interface. */
+#define EXAMPLE_PHY_ADDRESS BOARD_ENET0_PHY_ADDRESS
+
+/* System clock name. */
+#define EXAMPLE_CLOCK_NAME kCLOCK_CoreSysClk
+
+
+/*******************************************************************************
+ * Prototypes
+ ******************************************************************************/
+static void cp_handler(void *pvParameters);
+
+/*******************************************************************************
+ * Variables
+ ******************************************************************************/
+struct charge_session_t charge_session;
+static struct netif netif;
+#if defined(FSL_FEATURE_SOC_LPC_ENET_COUNT) && (FSL_FEATURE_SOC_LPC_ENET_COUNT > 0)
+static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;
+#endif /* FSL_FEATURE_SOC_LPC_ENET_COUNT */
+/* FS data.*/
+
+
+/*!
+ * @brief Main function.
+ */
+int main(void) {
+    PRINTF("Starting APP!\r\n");
+    gpio_pin_config_t output_config = {
+        kGPIO_DigitalOutput, 0,
+    };
+
+    CRYPTO_InitHardware();
+
+    SYSMPU_Type *base = SYSMPU;
+    BOARD_InitPins();
+    BOARD_BootClockRUN();
+    BOARD_InitDebugConsole();
+    BOARD_InitBootPeripherals();
+
+    // Sets output
+    GPIO_PinInit(BOARD_SW3_GPIO, BOARD_SW3_GPIO_PIN, &output_config);
+    GPIO_PinWrite(BOARD_SW3_GPIO, BOARD_SW3_GPIO_PIN, 1);
+
+    /* Disable SYSMPU. */
+    base->CESR &= ~SYSMPU_CESR_VLD_MASK;
+    /* Set RMII clock src. */
+    SIM->SOPT2 |= SIM_SOPT2_RMIISRC_MASK;
+
+    static struct netif netif;
+	ip4_addr_t netif_ipaddr, netif_netmask, netif_gw;
+	ethernetif_config_t enet_config = {
+			.phyAddress = EXAMPLE_PHY_ADDRESS,
+			.clockName  = EXAMPLE_CLOCK_NAME,
+			.macAddress = configMAC_ADDR,
+#if defined(FSL_FEATURE_SOC_LPC_ENET_COUNT) && (FSL_FEATURE_SOC_LPC_ENET_COUNT > 0)
+            .non_dma_memory = non_dma_memory,
+#endif /* FSL_FEATURE_SOC_LPC_ENET_COUNT */
+	};
+
+	tcpip_init(NULL, NULL);
+
+	IP4_ADDR(&netif_ipaddr, configIP_ADDR0, configIP_ADDR1, configIP_ADDR2, configIP_ADDR3);
+	IP4_ADDR(&netif_netmask, configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3);
+	IP4_ADDR(&netif_gw, configGW_ADDR0, configGW_ADDR1, configGW_ADDR2, configGW_ADDR3);
+
+	netifapi_netif_add(&netif, &netif_ipaddr, &netif_netmask, &netif_gw, &enet_config, ethernetif0_init, tcpip_input);
+	netifapi_netif_set_default(&netif);
+	netifapi_netif_set_up(&netif);
+	netif_create_ip6_linklocal_address(&netif, 1);
+    
+    /*mdns_resp_init();
+    mdns_resp_add_netif(&netif, MDNS_HOSTNAME, 60);
+    mdns_resp_add_service(&netif, MDNS_HOSTNAME, "_http", DNSSD_PROTO_TCP, 80, 300, http_srv_txt, NULL);*/
+
+    PRINTF("\r\n************************************************\r\n");
+    PRINTF(" TCP Echo example\r\n");
+    PRINTF("************************************************\r\n");
+    PRINTF(" IPv4 Address     : %u.%u.%u.%u\r\n", ((u8_t *)&netif_ipaddr)[0], ((u8_t *)&netif_ipaddr)[1],
+           ((u8_t *)&netif_ipaddr)[2], ((u8_t *)&netif_ipaddr)[3]);
+    PRINTF(" IPv4 Subnet mask : %u.%u.%u.%u\r\n", ((u8_t *)&netif_netmask)[0], ((u8_t *)&netif_netmask)[1],
+           ((u8_t *)&netif_netmask)[2], ((u8_t *)&netif_netmask)[3]);
+    PRINTF(" IPv4 Gateway     : %u.%u.%u.%u\r\n", ((u8_t *)&netif_gw)[0], ((u8_t *)&netif_gw)[1],
+           ((u8_t *)&netif_gw)[2], ((u8_t *)&netif_gw)[3]);
+    PRINTF("************************************************\r\n");
+  
+    /* Launch tasks */
+    /* create server thread in RTOS */
+    /*if (sys_thread_new("main_thread", main_thread, NULL, 3000, 1) == NULL) {
+        LWIP_ASSERT("main(): Task creation failed.", 0);
+    }*/
+    //if (xTaskCreate(sdp_server, "sdp_server", configMINIMAL_STACK_SIZE + 10, NULL, SDP_SERVER_PRIORITY, NULL) != pdPASS) {
+    //	PRINTF("Task 2 creation failed!.\r\n");
+    //}
+    //if (xTaskCreate(cp_handler, "cp_gen", configMINIMAL_STACK_SIZE + 10, NULL, CP_GEN_PRIORITY, NULL) != pdPASS) {
+	//   PRINTF("Task 3 creation failed!.\r\n");
+    //}
+
+    // Load EVSE Charger configuration
+    load_charger_config(&netif.ip6_addr[0].u_addr.ip6.addr);
+
+    //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
+    sdp_init();
+    v2g_init();
+
+    /* run RTOS */
+    vTaskStartScheduler();
+    PRINTF('OOOPS\r\n');
+
+    /* should not reach this statement */
+    for (;;)
+        ;
+}
+
+/*!
+ * @brief Task for CP generation. Can be used for CCS, GBT or CHAdeMO
+ */
+static void cp_handler(void *pvParameters) {
+	PRINTF("### CP Generation Task ###\r\n");
+
+    // INPUT MUST BE A 'TIMER' REFERENCE (FTM_1)
+
+    struct cp_gen_t cp;
+    struct timer_t tmr;
+
+    /* Initialize data structures */
+    cp = initCP(CCS_DC, CCS_CP_FREQ, MAX_CP_DUTY_CYCLE, 20000);
+    memset(&tmr, 0, sizeof(tmr));
+
+    int counter = 0;
+    while(1) {
+
+    	if (counter > 1000) {
+    		PRINTF("TIMER\n");
+    		counter = 0;
+    	}
+
+        /* Interruption event from timer */
+        if(ftmIsrFlag) {
+            handleCPGen(&cp, &tmr);
+            ftmIsrFlag = false;
+        	counter++;
+        }
+        __WFI();
+    }
+}
+

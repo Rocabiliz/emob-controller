@@ -1,0 +1,16 @@
+fsl_ftfx_controller.c:187:10:FTFx_API_Init	8	static
+fsl_ftfx_controller.c:265:10:FTFx_CMD_Erase	32	static
+fsl_ftfx_controller.c:326:10:FTFx_CMD_EraseAll	16	static
+fsl_ftfx_controller.c:396:10:FTFx_CMD_EraseAllExecuteOnlySegments	16	static
+fsl_ftfx_controller.c:422:10:FTFx_CMD_Program	40	static
+fsl_ftfx_controller.c:485:10:FTFx_CMD_ProgramOnce	16	static
+fsl_ftfx_controller.c:526:10:FTFx_CMD_ProgramSection	56	static
+fsl_ftfx_controller.c:682:10:FTFx_CMD_ReadOnce	24	static
+fsl_ftfx_controller.c:725:10:FTFx_CMD_ReadResource	48	static
+fsl_ftfx_controller.c:792:10:FTFx_CMD_VerifyErase	48	static
+fsl_ftfx_controller.c:849:10:FTFx_CMD_VerifyEraseAll	16	static
+fsl_ftfx_controller.c:863:10:FTFx_CMD_VerifyEraseAllExecuteOnlySegments	16	static
+fsl_ftfx_controller.c:877:10:FTFx_CMD_VerifyProgram	40	static
+fsl_ftfx_controller.c:935:10:FTFx_CMD_SecurityBypass	16	static
+fsl_ftfx_controller.c:967:10:FTFx_REG_GetSecurityState	0	static
+fsl_ftfx_controller.c:1028:10:FTFx_CMD_SwapControl	16	static
