@@ -1099,7 +1099,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	// Load client certificate (OEMProvisioning - DER encoded)
 	mbedtls_x509_crt crt;
 	mbedtls_x509_crt_init(&crt);
-	unsigned char certBuffer[256];
+	unsigned char certBuffer[256], pkeyBuffer[256];
 	uint8_t secretBuffer[512];
 	size_t secretLen, certLen = 256;
 	if ((ret = mbedtls_x509_crt_parse_der(	&crt, 
@@ -1134,7 +1134,8 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_ctr_drbg_init(&ctr_drbg);
 	mbedtls_ecdh_init(&ecdh);
 
-	if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers))) != 0) {
+	if ((ret = mbedtls_ctr_drbg_seed(	&ctr_drbg, mbedtls_entropy_func, 
+										&entropy, (const unsigned char *) pers, strlen(pers))) != 0) {
 		PRINTF("EC ERR 1 : %d\r\n", ret);
 	}
 	if ((ret = mbedtls_ecp_group_load(&ecdh.grp, MBEDTLS_ECP_DP_SECP256R1)) != 0) {
@@ -1203,7 +1204,29 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	PRINTF("\r\n");*/
 
 	// Step 6: encrypt EV private key with the computed secret key
-	// TODO
+
+	// 1. Load ContractCertPrivKey into a context
+	// 2. Extract PrivateKey component
+	// 3. Check if 32 bytes (if 33, there is 1 byte too many MSB » remove it)
+	// 4. Add the IV in the first bytes (MSB), along with the ContractPrivKey
+	// 5. Encrypt buffer composed of (IV + ContractPrivKey)
+	mbedtls_pk_context pkey;
+	mbedtls_pk_init(&pkey);
+	if ((ret = mbedtls_pk_parse_key(&pkey, ContractPrivKey, 
+									sizeof(ContractPrivKey), "123456", strlen("123456"))) != 0) {
+		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
+	}
+	if ((ret = mbedtls_pk_write_key_pem(&pkey, pkeyBuffer, sizeof(pkeyBuffer))) != 0) {
+		PRINTF("GET PKEY PARSE: %d\r\n", ret);
+	}
+	PRINTF("PKEY BUF\r\n");
+	for (i = 0; i < sizeof(pkeyBuffer); i++) {
+		if (pkeyBuffer[i] == '\0') {
+			PRINTF("END OF STRING; LEN: %d\r\n", i); // This should be 32 or 33 bytes...
+		}
+		PRINTF("%c", pkeyBuffer[i]);
+	} 
+
 	unsigned char iv[16];
 	memset(iv, 0xFA, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
 	mbedtls_aes_context aes_ctx;
@@ -1212,11 +1235,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		PRINTF("AES SETKEY ERR: %d\r\n", ret);
 	}
 	// Encryption must be with an input buffer of %16 bytes
-		// 1. Load ContractCertPrivKey into a context
-		// 2. Extract PrivateKey component
-		// 3. Check if 32 bytes (if 33, there is 1 byte too many MSB » remove it)
-		// 4. Add the IV in the first bytes (MSB), along with the ContractPrivKey
-		// 5. Encrypt buffer composed of (IV + ContractPrivKey)
 	if ((ret = mbedtls_aes_crypt_cbc(	&aes_ctx, MBEDTLS_AES_ENCRYPT, 
 										strlen(ContractPrivKey), iv, 
 										ContractPrivKey, encryptBuf)) != 0) {
