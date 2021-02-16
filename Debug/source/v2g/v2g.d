@@ -118,7 +118,8 @@ source/v2g/v2g.o source/v2g/v2g.d: ../source/v2g/v2g.c \
  C:\projects\Emob-Controller\mbedtls\port\ksdk/aes_alt.h \
  C:\projects\Emob-Controller\mbedtls\include/mbedtls/platform.h \
  C:\projects\Emob-Controller\mbedtls\include/mbedtls/hkdf.h \
- C:\projects\Emob-Controller\mbedtls\include/mbedtls/md.h
+ C:\projects\Emob-Controller\mbedtls\include/mbedtls/md.h \
+ C:\projects\Emob-Controller\mbedtls\include/mbedtls/base64.h
 
 C:\projects\Emob-Controller/OpenV2G/codec/EXITypes.h:
 
@@ -359,3 +360,5 @@ C:\projects\Emob-Controller\mbedtls\include/mbedtls/platform.h:
 C:\projects\Emob-Controller\mbedtls\include/mbedtls/hkdf.h:
 
 C:\projects\Emob-Controller\mbedtls\include/mbedtls/md.h:
+
+C:\projects\Emob-Controller\mbedtls\include/mbedtls/base64.h:

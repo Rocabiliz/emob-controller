@@ -44,6 +44,7 @@
 #include "mbedtls/platform.h"
 #include "mbedtls/hkdf.h"
 #include "mbedtls/md.h"
+#include "mbedtls/base64.h"
 
 static struct v2gEXIDocument exiIn, exiOut;
 
@@ -1209,23 +1210,27 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	// 2. Extract PrivateKey component
 	// 3. Check if 32 bytes (if 33, there is 1 byte too many MSB » remove it)
 	// 4. Add the IV in the first bytes (MSB), along with the ContractPrivKey
-	// 5. Encrypt buffer composed of (IV + ContractPrivKey)
-	mbedtls_pk_context pkey;
-	mbedtls_pk_init(&pkey);
-	if ((ret = mbedtls_pk_parse_key(&pkey, ContractPrivKey, 
+	// 5. Encrypt buffer composed of (IV + ContractPrivKey) » final length should be 48
+	mbedtls_pk_context contractPkey;
+	mbedtls_pk_init(&contractPkey);
+	if ((ret = mbedtls_pk_parse_key(&contractPkey, ContractPrivKey, 
 									sizeof(ContractPrivKey), "123456", strlen("123456"))) != 0) {
 		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
 	}
-	if ((ret = mbedtls_pk_write_key_pem(&pkey, pkeyBuffer, sizeof(pkeyBuffer))) != 0) {
+	if ((ret = mbedtls_pk_write_key_pem(&contractPkey, pkeyBuffer, sizeof(pkeyBuffer))) != 0) {
 		PRINTF("GET PKEY PARSE: %d\r\n", ret);
 	}
-	PRINTF("PKEY BUF\r\n");
+
+	PRINTF("PKEY BUF LEN: %d\r\n", pkeyBuffer);
 	for (i = 0; i < sizeof(pkeyBuffer); i++) {
 		if (pkeyBuffer[i] == '\0') {
 			PRINTF("END OF STRING; LEN: %d\r\n", i); // This should be 32 or 33 bytes...
 		}
 		PRINTF("%c", pkeyBuffer[i]);
 	} 
+	
+
+
 
 	unsigned char iv[16];
 	memset(iv, 0xFA, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
