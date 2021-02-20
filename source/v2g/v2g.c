@@ -28,6 +28,7 @@
 #include "v2g/v2g.h"
 #include "charger/charger.h"
 #include "v2g/v2g_comm.h"
+#include "v2g/v2g_security.h"
 
 // lwip include
 #include "lwip/sys.h"
@@ -1074,31 +1075,36 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		"-----END CERTIFICATE-----\n";
 
 	const char ContractPrivKey[] = "-----BEGIN EC PRIVATE KEY-----\n"
-	"Proc-Type: 4,ENCRYPTED\n"
-	"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
-	"\n"
-	"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
-	"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
-	"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
-	"-----END EC PRIVATE KEY-----\n";
+		"Proc-Type: 4,ENCRYPTED\n"
+		"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
+		"\n"
+		"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
+		"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
+		"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
+		"-----END EC PRIVATE KEY-----\n";
 
 	// Step 1: generate DH Public Key (secp256r1 according to ISO15118-2)	
 	const char pers[] = "ecdh";
-	size_t olen, enc_len, dh_pubkey_Len;
-	unsigned char buf[128], encryptBuf[512];
+	size_t dhPubkeyLen, eMAIDLen;
+	unsigned char dhPukeyBuf[128];
     unsigned char srv_to_cli[65]; // EC Public Key
+	unsigned char iv[16], contractPkeyBytes[32], privKeyBuf[48], encryptBuf[48];
+	char eMAID[64];
 
 	mbedtls_ecdh_context ecdh, ctx_ev;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_entropy_context entropy;
+	mbedtls_pk_context contractPkey;
+	mbedtls_ecp_keypair *keypair;
+	mbedtls_x509_crt crt;
 
 	mbedtls_ecdh_init(&ecdh);
 	mbedtls_ecdh_init(&ctx_ev);
+
 	/*****************************************
-	 * CLIENT (EV)
+	 * CLIENT CERTIFICATE HANDLING (EV)
 	 * ***************************************/
 	// Load client certificate (OEMProvisioning - DER encoded)
-	mbedtls_x509_crt crt;
 	mbedtls_x509_crt_init(&crt);
 	unsigned char certBuffer[256], pkeyBuffer[256];
 	uint8_t secretBuffer[512];
@@ -1121,14 +1127,14 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}*/
 	PRINTF("\r\n"); // OK!
 
-	mbedtls_ecp_keypair *keypair = mbedtls_pk_ec(crt.pk); /* quick access */
+	keypair = mbedtls_pk_ec(crt.pk); /* quick access */
 	/*PRINTF("X:\r\n");
 	for (i = 0; i < keypair->Q.X.n; i++) {
 		PRINTF("%02x ", keypair->Q.X.p[i]);
 	}*/
 
 	/*****************************************
-	 * SERVER (EVSE)
+	 * SERVER KEYPAIR CREATION(EVSE)
 	 * ***************************************/
 	// Step 2: create new ECDH context for server
 	mbedtls_entropy_init(&entropy);
@@ -1208,32 +1214,37 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 
 	// 1. Load ContractCertPrivKey into a context
 	// 2. Extract PrivateKey component
-	// 3. Check if 32 bytes (if 33, there is 1 byte too many MSB » remove it)
+	// 3. Check if 32 bytes (if 33, there is 1 byte too many MSB » remove it) TODO
 	// 4. Add the IV in the first bytes (MSB), along with the ContractPrivKey
 	// 5. Encrypt buffer composed of (IV + ContractPrivKey) » final length should be 48
-	mbedtls_pk_context contractPkey;
+	memset(iv, 0xCC, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
 	mbedtls_pk_init(&contractPkey);
+
 	if ((ret = mbedtls_pk_parse_key(&contractPkey, ContractPrivKey, 
 									sizeof(ContractPrivKey), "123456", strlen("123456"))) != 0) {
 		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
 	}
-	if ((ret = mbedtls_pk_write_key_pem(&contractPkey, pkeyBuffer, sizeof(pkeyBuffer))) != 0) {
-		PRINTF("GET PKEY PARSE: %d\r\n", ret);
+
+	// Get actual Private Key 
+	mbedtls_ecp_keypair *privKeyRaw = mbedtls_pk_ec(contractPkey);
+	if ((ret = mbedtls_mpi_write_binary(&privKeyRaw->d, contractPkeyBytes, sizeof(contractPkeyBytes))) != 0) {
+		PRINTF("PRIV KEY MP WRITE ERR: %d\r\n", ret);
 	}
 
-	PRINTF("PKEY BUF LEN: %d\r\n", pkeyBuffer);
-	for (i = 0; i < sizeof(pkeyBuffer); i++) {
-		if (pkeyBuffer[i] == '\0') {
+	// Compose buffer with [IV, Key]
+	memcpy(privKeyBuf, iv, sizeof(iv));
+	memcpy(&privKeyBuf[sizeof(iv)], contractPkeyBytes, sizeof(contractPkeyBytes));
+	PRINTF("CONTRACT IV LEN: %d\r\n", sizeof(iv)+sizeof(contractPkeyBytes));
+	/*for (i = 0; i < sizeof(iv)+sizeof(contractPkeyBytes); i++) {
+		if (privKeyBuf[i] == '\0') {
 			PRINTF("END OF STRING; LEN: %d\r\n", i); // This should be 32 or 33 bytes...
+			break;
 		}
-		PRINTF("%c", pkeyBuffer[i]);
-	} 
-	
+		PRINTF("%c", privKeyBuf[i]);
+	}
+	PRINTF("\r\n");*/
 
-
-
-	unsigned char iv[16];
-	memset(iv, 0xFA, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
+	// Encrypt buffer
 	mbedtls_aes_context aes_ctx;
 	mbedtls_aes_init(&aes_ctx);
 	if ((ret = mbedtls_aes_setkey_enc(&aes_ctx, sessionKey, 128)) != 0) {
@@ -1241,86 +1252,74 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	// Encryption must be with an input buffer of %16 bytes
 	if ((ret = mbedtls_aes_crypt_cbc(	&aes_ctx, MBEDTLS_AES_ENCRYPT, 
-										strlen(ContractPrivKey), iv, 
-										ContractPrivKey, encryptBuf)) != 0) {
+										sizeof(contractPkeyBytes), iv, 
+										contractPkeyBytes, encryptBuf)) != 0) {
 		PRINTF("AES ENCRYPT ERR: %d\r\n", ret);
 	}
-	for (i = 0; i < strlen(ContractPrivKey); i++) {
+	for (i = 0; i < sizeof(encryptBuf); i++) {
 		PRINTF("%02x ", encryptBuf[i]);
 	}
 	PRINTF("\r\n");
 
-	////////////////////////////////////////////////////////////////////////////////////////////
+	/*************************************
+	 * WRITE TO OUTPUT STRUCTURE
+	 * ***********************************/
 	// Uncompressed DH public key (ISO 15118-2)
 	if ((ret = mbedtls_ecp_point_write_binary(	&ecdh.grp, &ecdh.Q, 
-												MBEDTLS_ECP_PF_UNCOMPRESSED, &dh_pubkey_Len, 
-												buf, sizeof(buf))) != 0) {
+												MBEDTLS_ECP_PF_UNCOMPRESSED, &dhPubkeyLen, 
+												dhPukeyBuf, sizeof(dhPukeyBuf))) != 0) {
 		PRINTF("WRITE BINARY PUB KEY ERR: %d\r\n", ret);
 	}
-	PRINTF("PUB KEY LEN: %d", dh_pubkey_Len);
-	/*for (i = 0; i < dh_pubkey_Len; i++) {
-		PRINTF("%02x ", buf[i]);
+	PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
+	/*for (i = 0; i < dhPubkeyLen; i++) {
+		PRINTF("%02x ", dhPukeyBuf[i]);
 	} */ // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
 
 	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen = 3;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters[0] = 'i';
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters[1] = 'd';
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters[2] = '3';
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytesLen = dh_pubkey_Len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters,
+			"id3",
+			exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen);
+	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytesLen = dhPubkeyLen;
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytes, 
-			buf, dh_pubkey_Len);
+			dhPukeyBuf, dhPubkeyLen);
 
-	// Encrypt private key (contract.key) with OEMProvisioning Cert and DHpublickey (session key)
-	const char ContractSignatureEncryptedPrivateKey[] = ""; // encrypt ContractPrivKey
+	// Encrypted Contract Private Key
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
+	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.characters, "id2", 3);
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytesLen = sizeof(encryptBuf);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytes,
+			encryptBuf,
+			sizeof(encryptBuf));
+
+	// eMAID
+	// ContractCertificateChain, find DN of certificate
+	// TODO: remove hyphens from eMAID?
+	mbedtls_x509_crt contractCrt;
+	mbedtls_x509_crt_init(&contractCrt);
+	if ((ret = mbedtls_x509_crt_parse(	&contractCrt, 
+										(const unsigned char *)ContractSignatureCertChain, 
+										sizeof(ContractSignatureCertChain))) != 0) {
+		PRINTF("CERT LOAD ERR : %d\r\n", ret);
+	}
 	
+	eMAIDLen = find_oid_value_in_name(&contractCrt.subject, "CN", eMAID, sizeof(eMAID));
+	/*if(eMAIDLen) {
+		PRINTF("EMAID LEN: %d\r\n", eMAIDLen);
+		PRINTF("CN: %s\n", eMAID);
+	} else {
+		PRINTF("Unable to find OID\n");
+	}*/
+	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen = 3;
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.characters, 
+			"id4", 
+			exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen);
+	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.CONTENT.charactersLen = eMAIDLen;
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.CONTENT.characters,
+			eMAID,
+			eMAIDLen);
 
 	/*
-	mbedtls_x509_crt contractCert, oemProvCert;
-
-	// Contract Certificate
-	mbedtls_x509_crt_init(&contractCert);
-	if ((ret = mbedtls_x509_crt_parse(&contractCert, (const unsigned char *)ContractCertificate, sizeof(ContractCertificate))) != 0) {
-		PRINTF("CERT ERR 1\r\n");
-	}
-	if ((ret = mbedtls_x509_crt_parse(&contractCert, (const unsigned char *)ContractCertificateChain, sizeof(ContractCertificateChain))) != 0) {
-		PRINTF("CERT ERR 2\r\n");
-	}
-
-	// EV - OEMProvisioningCertificate
-	mbedtls_x509_crt_init(&oemProvCert);
-	if ((ret = mbedtls_x509_crt_parse(	&oemProvCert, 
-										(const unsigned char *)exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes, 
-										exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen)) != 0) {
-		PRINTF("CERT ERR 3\r\n");
-	}
-	// Private Key: oemProvCert->pk
 	
-
-	// EC Key Pair (secp256r1 according to ISO15118-2)
-	mbedtls_ecdh_context ctx_srv;
-	mbedtls_ctr_drbg_context ctr_drbg;
-	mbedtls_entropy_context entropy;
-	const char pers[] = "ecdh";
-	unsigned char srv_to_cli[32];
-
-	mbedtls_entropy_init(&entropy);
-	mbedtls_ecdh_init(&ctx_srv);
-	mbedtls_ctr_drbg_init(&ctr_drbg);
-	if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) pers, strlen(pers))) != 0) {
-		PRINTF("EC ERR 1\r\n");
-	}
-	if ((ret = mbedtls_ecp_group_load(&ctx_srv.grp, MBEDTLS_ECP_DP_SECP256R1)) != 0) {
-		PRINTF("EC ERR 2\r\n");
-	}
-	if ((ret = mbedtls_ecdh_gen_public(&ctx_srv.grp, &ctx_srv.d, &ctx_srv.Q, mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
-		PRINTF("EC ERR 3\r\n");
-	}
-	if ((ret = mbedtls_mpi_write_binary(&ctx_srv.Q.X, srv_to_cli, 32)) != 0) {
-		PRINTF("EC ERR 4\r\n");
-	}
-	PRINTF("EC KEY: %s\r\n", srv_to_cli);*/
-	// Key: ctx_srv.d
-
 	// Encript private key
 	//mbedtls_ecdh_compute_shared
 
@@ -1834,4 +1833,3 @@ void sdp_init() {
 	}
 	// ~10KB
 }
-

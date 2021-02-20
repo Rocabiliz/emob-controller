@@ -5,15 +5,18 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../source/v2g/v2g.c \
-../source/v2g/v2g_comm.c 
+../source/v2g/v2g_comm.c \
+../source/v2g/v2g_security.c 
 
 OBJS += \
 ./source/v2g/v2g.o \
-./source/v2g/v2g_comm.o 
+./source/v2g/v2g_comm.o \
+./source/v2g/v2g_security.o 
 
 C_DEPS += \
 ./source/v2g/v2g.d \
-./source/v2g/v2g_comm.d 
+./source/v2g/v2g_comm.d \
+./source/v2g/v2g_security.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
