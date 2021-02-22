@@ -6,6 +6,11 @@
 
 #include "mbedtls/certs.h"
 #include "mbedtls/x509_crt.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/ecdh.h"
+#include "mbedtls/sha256.h"
+#include "OpenV2G/codec/v2gEXIDatatypes.h"
+#include "utilities/fsl_debug_console.h"
 
 /* 
 find_oid_value_in_name

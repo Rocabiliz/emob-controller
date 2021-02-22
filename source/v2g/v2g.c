@@ -997,6 +997,51 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	PRINTF("\r\n");*/
 	// Use OEMProvisioningCert to encrypt CertificateInstallationRes
 
+	/*******************************
+	* Check Signature from Request 
+	********************************/
+	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
+	struct v2gEXIFragment *auth_fragment;
+	//init_v2gEXIFragment(&auth_fragment);
+	auth_fragment = (struct v2gEXIFragment *)&exiIn->V2G_Message.Body;
+	/*memcpy(	&auth_fragment.CertificateInstallationReq, 
+			&exiIn->V2G_Message.Body.CertificateInstallationReq, 
+			sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));*/
+	if ((ret = verify_v2g_signature(sig, auth_fragment)) != 0) {
+		PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+	}
+
+	/*
+	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
+            unsigned char buf[256];
+            uint16_t buffer_pos = 0;
+            struct v2gReferenceType *req_ref = &sig->SignedInfo.Reference.array[0];
+            bitstream_t stream = {
+                .size = 256,
+                .data = buf,
+                .pos  = &buffer_pos,
+                .buffer = 0,
+                .capacity = 8, // Set to 8 for send and 0 for recv
+            };
+            struct v2gEXIFragment auth_fragment;
+            uint8_t digest[32];
+            init_v2gEXIFragment(&auth_fragment);
+            auth_fragment.AuthorizationReq_isUsed = 1u;
+            memcpy(&auth_fragment.AuthorizationReq, req, sizeof(*req));
+            err = encode_v2gExiFragment(&stream, &auth_fragment);
+            if (err != 0) {
+                printf("handle_authorization: unable to encode auth fragment\n");
+                return -1;
+            }
+            sha256(buf, (size_t)buffer_pos, digest, 0);
+            if (req_ref->DigestValue.bytesLen != 32
+                || memcmp(req_ref->DigestValue.bytes, digest, 32) != 0) {
+                printf("handle_authorization: invalid digest\n");
+                res->ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+                return 0;
+            }
+	*/
+
 	// Fill output data	
 	// cpsCertChain.p12
 	const char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
@@ -1394,11 +1439,11 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 
 	PRINTF("Certificate Installation DONE!\r\n");
 
-	/*mbedtls_ecdh_free(&ecdh);
+	mbedtls_ecdh_free(&ecdh);
 	mbedtls_x509_crt_free(&crt);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
-	mbedtls_ecp_point_free(keypair);*/
+	mbedtls_ecp_point_free(keypair);
 
 	return;
 }
@@ -1817,7 +1862,7 @@ bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader) {
 
 void v2g_init() {
 	PRINTF("V2G_INIT\r\n");
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 6500, 4) == NULL) { // 4000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 6700, 4) == NULL) { // 4000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 
