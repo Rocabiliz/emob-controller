@@ -206,7 +206,6 @@ int main(void) {
     load_charger_config(&netif.ip6_addr[0].u_addr.ip6.addr);
 
     //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
-    sdp_init();
     v2g_init();
 
     /* run RTOS */

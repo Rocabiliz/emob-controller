@@ -92,7 +92,9 @@ static void secc_discovery_protocol(void* arg) {
 
 	LWIP_UNUSED_ARG(arg);
 
+	PRINTF("*****************************\r\n");
 	PRINTF("SDP - SECC Discovery Protocol\r\n");
+	PRINTF("*****************************\r\n");
 	/************************************
      * SDP - SECC DISCOVERY PROTOCOL
      * **********************************/
@@ -104,33 +106,33 @@ static void secc_discovery_protocol(void* arg) {
 			continue;
 		}
 		
-		PRINTF("Creating SDP/UDP socket...\r\n");
+		PRINTF("[SDP] Creating SDP/UDP socket...\r\n");
 		sdp_conn = (struct netconn*)netconn_new(NETCONN_UDP_IPV6);
 		if ((err = netconn_bind(sdp_conn, IP6_ADDR_ANY, V2G_SDP_SERVER_PORT)) != ERR_OK) { // port: 15118
-			PRINTF("SDP/UDP bind error: %err\r\n", err);
+			PRINTF("[SDP] SDP/UDP bind error: %err\r\n", err);
 		}
 		
 		// Wait for SDP_Req
 		while (1) {
-			PRINTF("Waiting to receive UDP...\r\n");
+			PRINTF("[SDP] Waiting to receive UDP...\r\n");
 			err = netconn_recv(sdp_conn, &udp_buf);
-			PRINTF("Received SDP!\r\n");
+			PRINTF("[SDP] Received SDP!\r\n");
 
 			// Parse received message
 			if (err == ERR_OK) {
 				sdp_req = udp_buf->p->payload;
 
 				if (sdp_req->v2g_header.v2g_proto_version != V2G_HEADER_PROTO) {
-					PRINTF("ERR: SDP REQ V2G Protocol version\r\n");
+					PRINTF("[SDP] ERR: SDP REQ V2G Protocol version\r\n");
 					continue;
 				}
 				else if (sdp_req->v2g_header.inverse_v2g_proto_version != (0xFF - sdp_req->v2g_header.v2g_proto_version)) {
-					PRINTF("ERR: SDP REQ V2G Inverse Protocol version\r\n");
+					PRINTF("[SDP] ERR: SDP REQ V2G Inverse Protocol version\r\n");
 					continue;
 				}
 				else if ((	(uint16_t)(sdp_req->v2g_header.payload_type[0] << 8) | 
 							(uint16_t)(sdp_req->v2g_header.payload_type[1])) != SDP_REQ_PAYLOAD_TYPE) {
-					PRINTF("ERR: SDP REQ Payload Type: %u:%u\r\n", sdp_req->v2g_header.payload_type[0], sdp_req->v2g_header.payload_type[1]);
+					PRINTF("[SDP] ERR: SDP REQ Payload Type: %u:%u\r\n", sdp_req->v2g_header.payload_type[0], sdp_req->v2g_header.payload_type[1]);
 					continue;
 				}
 				else if (	((uint32_t)(sdp_req->v2g_header.payload_length[0] << 24) |
@@ -138,7 +140,7 @@ static void secc_discovery_protocol(void* arg) {
 							(uint32_t)(sdp_req->v2g_header.payload_length[2] << 8) |
 							(uint32_t)(sdp_req->v2g_header.payload_length[3])) != 
 							(uint32_t)(sizeof(struct sdp_req_t) - sizeof(struct v2g_header_t))) {
-					PRINTF("ERR: SDP REQ Payload Length\r\n");
+					PRINTF("[SDP] ERR: SDP REQ Payload Length\r\n");
 					continue;
 				}
 
@@ -172,11 +174,11 @@ static void secc_discovery_protocol(void* arg) {
 				sdp_res.transport_proto = 0x00;
 
 				// Prepare buffer to send
-				PRINTF("Sending SDP response..\r\n");
+				PRINTF("[SDP] Sending SDP response..\r\n");
 				netbuf_ref(udp_buf, &sdp_res, sizeof(struct sdp_res_t));
 
 				if ((err = netconn_send(sdp_conn, udp_buf)) != ERR_OK) {
-					PRINTF("ERR: could not send SDP_Res: %d\r\n", err);
+					PRINTF("[SDP] ERR: could not send SDP_Res: %d\r\n", err);
 					return;
 				}
 
@@ -185,15 +187,15 @@ static void secc_discovery_protocol(void* arg) {
 				netconn_delete(sdp_conn);
 
 				charge_session.v2g.session_active = true; // engage V2G/TCP-IPv6
-				PRINTF("SDP DONE!\r\n");
+				PRINTF("[SDP] SDP DONE!\r\n");
 				break;
 			}
 
 		} 
-		//break; 
+		break; 
 	}
 
-	PRINTF("Breaking SDP....\r\n");
+	PRINTF("[SDP] Breaking SDP\r\n");
 	vTaskDelete(NULL);
 }
 
@@ -216,8 +218,9 @@ static void v2g_session(void *arg) {
         .capacity = 0, // Set to 8 for send and 0 for recv
     };
 
+	PRINTF("********************\r\n");
 	PRINTF("V2G Protocol Session\r\n");
-
+	PRINTF("********************\r\n");
 /* TIMER EXAMPLE
 	TickType_t xStart, xEnd, xDifference;
 	for( ;; ) {
@@ -232,10 +235,10 @@ static void v2g_session(void *arg) {
 */
     // Create a new connection identifier. 
 	if ((conn = netconn_new(NETCONN_TCP_IPV6)) == NULL) {
-		PRINTF("New TCP Conn error\r\n");
+		PRINTF("[V2G] New TCP Conn error\r\n");
 	}
 	if ((err = netconn_bind(conn, IP6_ADDR_ANY, charge_session.charger.secc_v2g_port)) != ERR_OK) {
-		PRINTF("TCP Conn bind error\r\n");
+		PRINTF("[V2G] TCP Conn bind error\r\n");
 	}
 
 	// Init TLS stack
@@ -243,28 +246,24 @@ static void v2g_session(void *arg) {
 
 	// Tell connection to go into listening mode.
 	if ((err = netconn_listen(conn)) != ERR_OK) {
-		PRINTF("TCP Conn listen error\r\n");
+		PRINTF("[V2G] TCP Conn listen error\r\n");
 	}
-	PRINTF("LISTEN OK\r\n");
+	PRINTF("[V2G] LISTEN OK\r\n");
 
 	while (1) {
 
-		///////////////////////////////
-		// How to handle this session_active and use accept() blocking?
-		////////////////////////////
-		/*if (!charge_session.v2g.session_active) { 
-			continue;
-		}*/
-		//while (!charge_session.v2g.session_active);
-		PRINTF("# SDP Layer ok >> Starting V2G!\r\n");
-		
-		// Grab new TCP connection.
+		PRINTF("[V2G] Starting V2G cycle\r\n");
+
+		// Engage SDP (non-blocking)
+		sdp_init();
+
+		// Grab new TCP connection (blocking until SDP is over and new TCP connection is requested)
 		if ((err = netconn_accept(conn, &newconn)) == ERR_OK) {
 			//PRINTF("ACCEPT OK\r\n");
 			;
 		}
 		else {
-			PRINTF("ACCEPT ERROR!\r\n");
+			PRINTF("[V2G] ACCEPT ERROR!\r\n");
 
 			/* HANDLE ACCEPT ERROR! */
 			/*
@@ -277,11 +276,11 @@ static void v2g_session(void *arg) {
 		if (charge_session.v2g.tls) {
 
 			if ((ret = tls_conn_init(newconn)) != ERR_OK) {
-				PRINTF("TLS init has failed! Ret = %d\r\n", ret);
+				PRINTF("[V2G] TLS init has failed! Ret = %d\r\n", ret);
 			}
 			
 			if ((ret = tls_handshake()) != ERR_OK) {
-				PRINTF("TLS handshake has failed! Ret = %d\r\n", ret);
+				PRINTF("[V2G] TLS handshake has failed! Ret = %d\r\n", ret);
 			}
 			else {
 				/*PRINTF("###############################\r\n");
@@ -319,7 +318,7 @@ static void v2g_session(void *arg) {
 					// Decode input data
 					memset(&exiIn, 0, sizeof(exiIn));
 					if ((err = deserializeStream2EXI(&stream, &exiIn)) != ERR_OK) {
-						PRINTF("Deserializing EXI err: %d\r\n", err);
+						PRINTF("[V2G] Deserializing EXI err: %d\r\n", err);
 					}
 
 					// Init V2G output structure
@@ -396,13 +395,13 @@ static void v2g_session(void *arg) {
 						charge_session.v2g.stateFlow.chargingStatus_ok = 1;
 					}
 					else if (exiIn.V2G_Message.Body.SessionStopReq_isUsed) {
-						PRINTF("## Session Stop ##\r\n");
+						PRINTF("[V2G] ## Session Stop ##\r\n");
 						handle_session_stop(&exiIn, &exiOut);
 						memset(&charge_session.v2g.stateFlow, 0, sizeof(charge_session.v2g.stateFlow));
 						charge_session.v2g.stateFlow.sessionStop_ok = 1;
 					}
 					else {
-						PRINTF("## Invalid V2G message?\r\n");
+						PRINTF("[V2G] Invalid V2G message?\r\n");
 						continue;
 					}
 
@@ -412,15 +411,15 @@ static void v2g_session(void *arg) {
 					buffer_pos = 0;
 					memset(buffer, 0, sizeof(buffer));
 					if ((err = serializeEXI2Stream(&exiOut, &stream)) != 0) {
-						PRINTF("StreamPos: %d\r\n", buffer_pos);
-						PRINTF("EXI Encoding err: %d\r\n", err);
+						PRINTF("[V2G] StreamPos: %d\r\n", buffer_pos);
+						PRINTF("[V2G] EXI Encoding err: %d\r\n", err);
 					}
 
 				}
 
 				// Send data to the connection
 				if ((err = v2g_send(newconn, buffer, buffer_pos)) != ERR_OK) {
-					PRINTF("TCP WRITE ERROR: %d\r\n", err);
+					PRINTF("[V2G] TCP WRITE ERROR: %d\r\n", err);
 				}
 
 			}
@@ -450,13 +449,11 @@ void supported_app_protocol_req(bitstream_t *stream) {
 	uint8_t max_priority = 21;
 
 	// Decode buf as supportedAppProtocolReq
-	PRINTF("Supported App Proto 1\r\n");
 	*stream->pos = V2GTP_HEADER_LENGTH;
-	PRINTF("Supported App Proto 2\r\n");
 	decode_appHandExiDocument(stream, &handshake_req);
 
 	/* DEBUG HANDSHAKE_REQ */
-	PRINTF("*** HANDSHAKE DEBUG ***\r\n");
+	PRINTF("[V2G] *** HANDSHAKE DEBUG ***\r\n");
 	PRINTF("\t\tVersion=%d.%d\n", handshake_req.supportedAppProtocolReq.AppProtocol.array[0].VersionNumberMajor, handshake_req.supportedAppProtocolReq.AppProtocol.array[0].VersionNumberMinor);
 	PRINTF("\t\tSchemaID=%d\n", handshake_req.supportedAppProtocolReq.AppProtocol.array[0].SchemaID);
 	PRINTF("\t\tPriority=%d\n", handshake_req.supportedAppProtocolReq.AppProtocol.array[0].Priority);
@@ -471,7 +468,7 @@ void supported_app_protocol_req(bitstream_t *stream) {
 
 	// Go through all EVSE protocols, should the one with highest priority and implemented by this EVSE
 	// Priority 1: Highest ; Priority 20: Lowest
-	PRINTF("SupportedAppProtocol Len: %d\r\n", handshake_req.supportedAppProtocolReq.AppProtocol.arrayLen);
+	PRINTF("[V2G] SupportedAppProtocol Len: %d\r\n", handshake_req.supportedAppProtocolReq.AppProtocol.arrayLen);
 	for (i = 0; i < handshake_req.supportedAppProtocolReq.AppProtocol.arrayLen; i++) {
 
 		// Go through this EVSE's protocols
@@ -480,7 +477,7 @@ void supported_app_protocol_req(bitstream_t *stream) {
 			if (memcmp(	handshake_req.supportedAppProtocolReq.AppProtocol.array[i].ProtocolNamespace.characters, 
 						charge_session.v2g.secc_app_protocols[k].protocol_namespace, 
 						handshake_req.supportedAppProtocolReq.AppProtocol.array[i].ProtocolNamespace.charactersLen) == 0) {
-				PRINTF("MATCHED PROTOCOL: %s\r\n", charge_session.v2g.secc_app_protocols[k].protocol_namespace);
+				PRINTF("[V2G] MATCHED PROTOCOL: %s\r\n", charge_session.v2g.secc_app_protocols[k].protocol_namespace);
 
 				// Fill response with highest priority protocol
 				if (handshake_req.supportedAppProtocolReq.AppProtocol.array[i].Priority < max_priority) { // lower value is higher priority
@@ -505,18 +502,14 @@ void supported_app_protocol_req(bitstream_t *stream) {
 	}
 	
 	// Encode data to EXI format
-	//stream.data = buf->p->payload;
 	*stream->pos = V2GTP_HEADER_LENGTH;
 	stream->capacity = 8; // as it should be for send
 	err = encode_appHandExiDocument(stream, &handshake_res);
 
 	// Write V2G header
-	//err = write_v2gtpHeader(buf->p->payload, sizeof(struct appHandAnonType_supportedAppProtocolRes), V2GTP_EXI_TYPE);
 	err = write_v2gtpHeader(stream->data, sizeof(struct appHandAnonType_supportedAppProtocolRes), V2GTP_EXI_TYPE);
-	/*buf->p->tot_len = V2GTP_HEADER_LENGTH + sizeof(struct appHandAnonType_supportedAppProtocolRes);
-	buf->p->len = V2GTP_HEADER_LENGTH + sizeof(struct appHandAnonType_supportedAppProtocolRes);*/
+
 	stream->size = V2GTP_HEADER_LENGTH + sizeof(struct appHandAnonType_supportedAppProtocolRes);
-	PRINTF("Leaving SupportedAppProto\r\n");
 	return;
 }
 
@@ -532,12 +525,12 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 	bool prevSaSchedule_isAvailable;
 	struct v2gSAScheduleTupleType prevSaSchedule;
 
-	PRINTF("SESSION_SETUP#evccID: %x %x %x %x %x %x\r\n", 	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[0], 
-															exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[1], 
-															exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[2], 
-															exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[3], 
-															exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[4], 
-															exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[5]);
+	PRINTF("[V2G] SESSION_SETUP#evccID: %x %x %x %x %x %x\r\n", 	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[0], 
+																	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[1], 
+																	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[2], 
+																	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[3], 
+																	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[4], 
+																	exiIn->V2G_Message.Body.SessionSetupReq.EVCCID.bytes[5]);
 
 	// Prepare Response
 	init_v2gSessionSetupResType(&exiOut->V2G_Message.Body.SessionSetupRes);
@@ -547,12 +540,12 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 	// EVCC trying to resume previous session?
 	memset(&zeroSessionId, 0, sizeof(zeroSessionId));
 	if (memcmp(exiIn->V2G_Message.Header.SessionID.bytes, &zeroSessionId, exiIn->V2G_Message.Header.SessionID.bytesLen) != 0) {
-		PRINTF("SessionSetup:: EV SessionID is not zero\r\n");
+		PRINTF("[V2G] SessionSetup EV SessionID is not zero\r\n");
 		/****************************************************************
 		 * Rejoin previous SessionID
 		 * **************************************************************/
 		if (memcmp(exiIn->V2G_Message.Header.SessionID.bytes, charge_session.v2g.SessionID.bytes, sizeof(charge_session.v2g.SessionID.bytes)) == 0) {
-			PRINTF("SessionSetup:: loading previous SessionID\r\n");
+			PRINTF("[V2G] SessionSetup loading previous SessionID\r\n");
 			// Use same parameters as previous Session
 			prevPaymentSelected_isAvailable = charge_session.v2g.prev_payment_selected_isAvailable;
 			memcpy(	&prevPaymentSelected, 
@@ -587,7 +580,7 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 					if (charge_session.charger.evse_sa_schedules.SAScheduleTuple.array[i].SAScheduleTupleID == 
 						charge_session.v2g.ev_sa_schedule.SAScheduleTupleID) {
 						saScheduleOk = true;
-						PRINTF("REJOIN: SA Schedule ok!\r\n");
+						PRINTF("[V2G] REJOIN: SA Schedule ok!\r\n");
 						break;
 					}
 				}
@@ -596,12 +589,12 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 					saScheduleLen = charge_session.charger.evse_sa_schedules.SAScheduleTuple.arrayLen;
 					if (saScheduleLen == v2gSAScheduleListType_SAScheduleTuple_ARRAY_SIZE) {
 						charge_session.charger.evse_sa_schedules.SAScheduleTuple.array[saScheduleLen] = charge_session.v2g.ev_sa_schedule;
-						PRINTF("REJOIN: Replaced last SA Shedule!\r\n");
+						PRINTF("[V2G] REJOIN: Replaced last SA Shedule!\r\n");
 					}
 					else {
 						charge_session.charger.evse_sa_schedules.SAScheduleTuple.arrayLen++;
 						charge_session.charger.evse_sa_schedules.SAScheduleTuple.array[saScheduleLen+1] = charge_session.v2g.ev_sa_schedule;
-						PRINTF("REJOIN: added new SA Schedule!\r\n");
+						PRINTF("[V2G] REJOIN: added new SA Schedule!\r\n");
 					}
 				}
 			}
@@ -612,7 +605,7 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 			/****************************************************************
 			 * Generate new SessionID, different from the provided by the EV
 			 * **************************************************************/
-			PRINTF("SessionSetup:: generating new SessionID\r\n");
+			PRINTF("[V2G] SessionSetup generating new SessionID\r\n");
 			// Generate new SessionID which is different from the EV provided SessionID
 			memcpy(&sessionID, charge_session.v2g.SessionID.bytes, sizeof(sessionID));
 			do {
@@ -635,7 +628,7 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 		/****************************************************************
 	 	* Generate new SessionID
 		* **************************************************************/
-		PRINTF("SessionSetup:: EV SessionID is zero\r\n");
+		PRINTF("[V2G] SessionSetup EV SessionID is zero\r\n");
 
 		// Generate new SessionID
 		memcpy(&sessionID, charge_session.v2g.SessionID.bytes, charge_session.v2g.SessionID.bytesLen);
@@ -661,8 +654,8 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 	exiOut->V2G_Message.Header.SessionID.bytesLen = charge_session.v2g.SessionID.bytesLen;
 	memcpy(&exiOut->V2G_Message.Body.SessionSetupRes.EVSEID, &charge_session.charger.EVSEID, sizeof(charge_session.charger.EVSEID));
 
-	PRINTF("SESSION_ID: %x %x\r\n", exiOut->V2G_Message.Header.SessionID.bytes[6], exiOut->V2G_Message.Header.SessionID.bytes[7]);
-	PRINTF("SESSION_ID_LEN: %d\r\n", exiOut->V2G_Message.Header.SessionID.bytesLen);
+	PRINTF("[V2G] SESSION_ID: %x %x\r\n", exiOut->V2G_Message.Header.SessionID.bytes[6], exiOut->V2G_Message.Header.SessionID.bytes[7]);
+	PRINTF("[V2G] SESSION_ID_LEN: %d\r\n", exiOut->V2G_Message.Header.SessionID.bytesLen);
 
 	exiOut->V2G_Message.Body.SessionSetupRes.EVSETimeStamp_isUsed = 0; // ONLY FOR RISE-V2G !!
 	exiOut->V2G_Message.Body.SessionSetupRes.EVSETimeStamp = 0; // ONLY FOR RISE-V2G !!
@@ -670,7 +663,6 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 }
 
 void handle_service_discovery(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut) {
-	PRINTF("Service Discovery entry\r\n");
 	uint8_t i;
 	bool serviceScope_ok, serviceCategory_ok;
 	
@@ -773,8 +765,6 @@ void handle_service_discovery(struct v2gEXIDocument *exiIn, struct v2gEXIDocumen
 			&charge_session.v2g.service_list, 
 			sizeof(charge_session.v2g.service_list));
 			
-	PRINTF("ServiceDiscovery Out!\r\n");
-
 	return;
 }
 
@@ -782,8 +772,7 @@ void handle_service_detail(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 
 	uint8_t i;
 	bool serviceIdOk = false;
-	PRINTF("## Service Details!!\r\n");
-	PRINTF("ServiceListLen: %d\r\n", charge_session.v2g.service_list.Service.arrayLen);
+	PRINTF("[V2G] ServiceListLen: %d\r\n", charge_session.v2g.service_list.Service.arrayLen);
 
 	// Prepare response
 	init_v2gServiceDetailResType(&exiOut->V2G_Message.Body.ServiceDetailRes);
@@ -805,7 +794,6 @@ void handle_service_detail(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 	for (i = 0; i < charge_session.v2g.service_list.Service.arrayLen; i++) {
 		
 		if (charge_session.v2g.service_list.Service.array[i].ServiceID == exiIn->V2G_Message.Body.ServiceDetailReq.ServiceID) {
-			PRINTF("SERVICEID OK\r\n");
 			serviceIdOk = true;
 
 			// Fill ParameterSetID with this Service's data
@@ -814,7 +802,6 @@ void handle_service_detail(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 
 			// Find which ServiceID was requested
 			if (charge_session.v2g.service_list.Service.array[i].ServiceCategory == v2gserviceCategoryType_ContractCertificate) {
-				PRINTF("SERVICEID CERTIFICATE\r\n");
 				exiOut->V2G_Message.Body.ServiceDetailRes.ServiceParameterList.ParameterSet.arrayLen = 2;
 	
 				exiOut->V2G_Message.Body.ServiceDetailRes.ServiceParameterList.ParameterSet.array[0].ParameterSetID = 1; // Table 106
@@ -844,13 +831,11 @@ void handle_service_detail(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 				
 			}
 			else if (charge_session.v2g.service_list.Service.array[i].ServiceCategory == v2gserviceCategoryType_Internet) {
-				PRINTF("SERVICEID INTERNET\r\n");
 				memcpy(	&exiOut->V2G_Message.Body.ServiceDetailRes.ServiceParameterList,
 						&charge_session.charger.evse_service_parameters,
 						sizeof(charge_session.charger.evse_service_parameters));
 			}
 			else {
-				PRINTF("SERVICEID OTHER\r\n");
 				serviceIdOk = false;
 				exiOut->V2G_Message.Body.ServiceDetailRes.ServiceParameterList_isUsed = 0u;
 			}
@@ -863,7 +848,6 @@ void handle_service_detail(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 		exiOut->V2G_Message.Body.ServiceDetailRes.ResponseCode = v2gresponseCodeType_FAILED_ServiceIDInvalid;
 	}
 
-	PRINTF("Leaving ServiceDetails..\r\n");
 	return;
 }
 
@@ -873,6 +857,7 @@ void handle_payment_service_selection(struct v2gEXIDocument *exiIn, struct v2gEX
 	bool chargeServiceOk = false;
 	bool serviceOk = false;
 	bool paymentOk = false;
+	bool serviceEn = false;
 
 	// Prepare response
 	init_v2gPaymentServiceSelectionResType(&exiOut->V2G_Message.Body.PaymentServiceSelectionRes);
@@ -888,8 +873,8 @@ void handle_payment_service_selection(struct v2gEXIDocument *exiIn, struct v2gEX
 	}
 
 	// Check if selected Services are available once again
-	PRINTF("V2G SERVICES len: %d\r\n", charge_session.v2g.service_list.Service.arrayLen);
-	PRINTF("# ServicesReq len: %d\r\n", exiIn->V2G_Message.Body.PaymentServiceSelectionReq.SelectedServiceList.SelectedService.arrayLen);
+	PRINTF("[V2G] V2G SERVICES len: %d\r\n", charge_session.v2g.service_list.Service.arrayLen);
+	PRINTF("[V2G] ServicesReq len: %d\r\n", exiIn->V2G_Message.Body.PaymentServiceSelectionReq.SelectedServiceList.SelectedService.arrayLen);
 	for (i = 0; i < exiIn->V2G_Message.Body.PaymentServiceSelectionReq.SelectedServiceList.SelectedService.arrayLen; i++) {
 
 		// Is it the ChargeService?
@@ -898,9 +883,10 @@ void handle_payment_service_selection(struct v2gEXIDocument *exiIn, struct v2gEX
 			chargeServiceOk = true;
 		}
 		else {
+			serviceEn = true;
 			// Go through all Services available in this V2G session
 			for (k = 0; k < charge_session.v2g.service_list.Service.arrayLen; k++) {
-				PRINTF("> ServiceID %d: %d\r\n", k, charge_session.v2g.service_list.Service.array[k].ServiceID);
+				PRINTF("[V2G] > ServiceID %d: %d\r\n", k, charge_session.v2g.service_list.Service.array[k].ServiceID);
 				if (exiIn->V2G_Message.Body.PaymentServiceSelectionReq.SelectedServiceList.SelectedService.array[i].ServiceID == 
 					charge_session.v2g.service_list.Service.array[k].ServiceID) {
 					serviceOk = true;
@@ -911,7 +897,7 @@ void handle_payment_service_selection(struct v2gEXIDocument *exiIn, struct v2gEX
 	}
 
 	// Service was not found
-	if (!serviceOk) {
+	if (!serviceOk & serviceEn) {
 		exiOut->V2G_Message.Body.PaymentServiceSelectionRes.ResponseCode = v2gresponseCodeType_FAILED_ServiceSelectionInvalid;
 	}
 	// Charging Service was not present
@@ -954,7 +940,6 @@ void handle_payment_details(struct v2gEXIDocument *exiIn, struct v2gEXIDocument 
 		exiOut->V2G_Message.Body.PaymentDetailsRes.ResponseCode = v2gresponseCodeType_FAILED_UnknownSession;
 	}
 
-	PRINTF("Got PAYMENT DETAILS!\r\n");
 	memcpy(exiOut->V2G_Message.Body.PaymentDetailsRes.GenChallenge.bytes, charge_session.v2g.challenge, 
 			sizeof(exiOut->V2G_Message.Body.PaymentDetailsRes.GenChallenge.bytes));
 	exiOut->V2G_Message.Body.PaymentDetailsRes.GenChallenge.bytesLen = sizeof(charge_session.v2g.challenge);
@@ -967,7 +952,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 
 	uint16_t i;
 	int ret;
-	PRINTF("## Certificate Installation!!\r\n");
+	PRINTF("[V2G] ### Certificate Installation\r\n");
 
 	// Prepare response
 	init_v2gCertificateInstallationResType(&exiOut->V2G_Message.Body.CertificateInstallationRes);
@@ -986,7 +971,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		PRINTF("%c", exiIn->V2G_Message.Body.CertificateInstallationReq.Id.characters[i]);
 	}
 	PRINTF("\r\n");
-	PRINTF("OEMPROV LEN: %d\r\n", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
+	PRINTF("[V2G] OEMPROV LEN: %d\r\n", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
 	/*for (i = 0; i < 20; i++) {
 		PRINTF("%02x ", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes[i]);
 	}*/
@@ -1002,14 +987,23 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	********************************/
 	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
 	struct v2gEXIFragment *auth_fragment;
-	//init_v2gEXIFragment(&auth_fragment);
-	auth_fragment = (struct v2gEXIFragment *)&exiIn->V2G_Message.Body;
-	/*memcpy(	&auth_fragment.CertificateInstallationReq, 
+
+	auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+	PRINTF("SIG 0\r\n");
+	init_v2gEXIFragment(auth_fragment);
+	PRINTF("SIG 0.5\r\n");
+	auth_fragment->CertificateInstallationReq_isUsed = 1u;
+	PRINTF("SIG 1\r\n");
+	memcpy(	&auth_fragment->CertificateInstallationReq, 
 			&exiIn->V2G_Message.Body.CertificateInstallationReq, 
-			sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));*/
+			sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
+	PRINTF("SIG 2\r\n");
 	if ((ret = verify_v2g_signature(sig, auth_fragment)) != 0) {
 		PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
 	}
+	vPortFree(auth_fragment);
+	PRINTF("[V2G] V2G SIGNATURE OK!\r\n");
 
 	/*
 	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
@@ -1450,7 +1444,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 
 void handle_authorization(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut) {
 
-	PRINTF("Authorization In\r\n");
 	// Prepare response
 	init_v2gAuthorizationResType(&exiOut->V2G_Message.Body.AuthorizationRes);
 	exiOut->V2G_Message.Body.AuthorizationRes_isUsed = 1u;
@@ -1471,7 +1464,6 @@ void handle_authorization(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 	}
 
 	exiOut->V2G_Message.Body.AuthorizationRes.EVSEProcessing = v2gEVSEProcessingType_Finished;
-	PRINTF("Authorization Out\r\n");
 	return;
 }
 
@@ -1862,7 +1854,7 @@ bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader) {
 
 void v2g_init() {
 	PRINTF("V2G_INIT\r\n");
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 6700, 4) == NULL) { // 4000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 6500, 4) == NULL) { // 4000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 

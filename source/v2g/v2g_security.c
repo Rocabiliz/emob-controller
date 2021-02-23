@@ -59,23 +59,21 @@ size_t find_oid_value_in_name(const mbedtls_x509_name *name, const char* target_
 int verify_v2g_signature(   struct v2gSignatureType *sig, 
                             struct v2gEXIFragment *auth_fragment) {
     //struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-    unsigned char buf[256];
+    unsigned char buf[1024];
     uint16_t buffer_pos = 0;
     struct v2gReferenceType *req_ref = &sig->SignedInfo.Reference.array[0];
     bitstream_t stream = {
-        .size = 256,
+        .size = 1024,
         .data = buf,
         .pos  = &buffer_pos,
         .buffer = 0,
         .capacity = 8, // Set to 8 for send and 0 for recv
     };
-    //struct v2gEXIFragment auth_fragment;
     uint8_t digest[32];
     int err;
+
     PRINTF("Verifying V2G Signature...\r\n");
-    //init_v2gEXIFragment(&auth_fragment);
-    //auth_fragment.AuthorizationReq_isUsed = 1u;
-    //memcpy(&auth_fragment.AuthorizationReq, req, sizeof(*req));
+
     if ((err = encode_v2gExiFragment(&stream, auth_fragment)) != 0) {
         PRINTF("handle_authorization: unable to encode auth fragment\n");
         return 1;
@@ -87,7 +85,6 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
     if (req_ref->DigestValue.bytesLen != 32 || 
         memcmp(req_ref->DigestValue.bytes, digest, 32) != 0) {
         PRINTF("handle_authorization: invalid digest\n");
-        //res->ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
         return 2;
     }
 
