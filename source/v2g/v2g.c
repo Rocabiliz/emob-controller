@@ -46,8 +46,93 @@
 #include "mbedtls/hkdf.h"
 #include "mbedtls/md.h"
 #include "mbedtls/base64.h"
+#include "mbedtls/ecdsa.h"
 
 static struct v2gEXIDocument exiIn, exiOut;
+
+const char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
+	"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
+	"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
+	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
+	"WjBQMREwDwYDVQQDDAhDUFMgTGVhZjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVj\n"
+	"dDELMAkGA1UEBhMCREUxEzARBgoJkiaJk/IsZAEZFgNDUFMwWTATBgcqhkjOPQIB\n"
+	"BggqhkjOPQMBBwNCAAS+jbjaGuLPc0P0ncG7yHHlkrZWSD+94mgw/2CkBzj59c7B\n"
+	"SbEL1O+UspEBDANNOm1VB3m/Ps5CdsOZiC6LYNbIoz8wPTAMBgNVHRMBAf8EAjAA\n"
+	"MA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUti3euQ9dIexd+M7vTz336JJEc/kw\n"
+	"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
+	"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
+	"-----END CERTIFICATE-----\n" // CPS Leaf
+	"-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
+	"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
+	"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
+	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
+	"WjBSMRMwEQYDVQQDDApQcm92U3ViQ0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9q\n"
+	"ZWN0MQswCQYDVQQGEwJERTETMBEGCgmSJomT8ixkARkWA0NQUzBZMBMGByqGSM49\n"
+	"AgEGCCqGSM49AwEHA0IABF/SaBVY/Mq+8KuJ1Qc6vY1e/OmsT4po4NDO32bEOrYc\n"
+	"/UuUh+KzpCsmO6ClJu6VJI5s/I2nyLg5k4JmzmXywYyjRTBDMBIGA1UdEwEB/wQI\n"
+	"MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS0GWz7jFQ+NKdjzO8E\n"
+	"zR4pNtb4wTAKBggqhkjOPQQDAgNHADBEAiB6LcgqAqI7QIAAO6IgUkx6RJLO14hY\n"
+	"171YzUwxlnKF4AIgGWjpCBXZjfDsq5YgEv7FoaLJ1j0bCwfRxDerELGNQ78=\n"
+	"-----END CERTIFICATE-----\n"
+	"-----BEGIN CERTIFICATE-----\n"
+	"MIIB1zCCAX6gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJVjJHUm9v\n"
+	"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
+	"CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTNaFw0yNTAyMTQyMDQyNTNa\n"
+	"MFIxEzARBgNVBAMMClByb3ZTdWJDQTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2pl\n"
+	"Y3QxCzAJBgNVBAYTAkRFMRMwEQYKCZImiZPyLGQBGRYDQ1BTMFkwEwYHKoZIzj0C\n"
+	"AQYIKoZIzj0DAQcDQgAEF2wsHo7ndfaHln2VhnKqdXA2miJrDxPF7Fey3X+d5yLM\n"
+	"KEInMO1wG7pRIvCjbkkRuHzgN3oMMm8AROjG5MnygKNFMEMwEgYDVR0TAQH/BAgw\n"
+	"BgEB/wIBATAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFC0hJa+cD7ManzY+ngR6\n"
+	"6z+HwjKyMAoGCCqGSM49BAMCA0cAMEQCIBLZFI8CBOuaktiw51cT8+CEp6W6yyuF\n"
+	"moqLhWMWgt2wAiBXbyvV0cMu/o0km0NWGCZx4aMad2gNxRjqJWSsaMzutw==\n"
+	"-----END CERTIFICATE-----\n"; 
+
+// moCertChain.p12 » TODO: Check if the eMAID in the OEMProvisioning certificate is 'authorized'
+const char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\n"
+	"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+	"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
+	"MRkwFwYDVQQDDBBERS1BQkMtQzEyM0FCQzU2MRkwFwYDVQQKDBBSSVNFIFYyRyBQ\n"
+	"cm9qZWN0MQswCQYDVQQGEwJERTESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZI\n"
+	"zj0CAQYIKoZIzj0DAQcDQgAEsWfvdDj3SVRQgr4W55oiJRX696ciIKHSz1eUDtus\n"
+	"dMPCcpxZWknPVudzTyihh4d/zjKMPMBu3Oks8vxL1sxWFqM/MD0wDAYDVR0TAQH/\n"
+	"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
+	"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
+	"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
+	"-----END CERTIFICATE-----\n" // contractCert leaf
+	"-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
+	"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+	"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+	"MREwDwYDVQQDDAhNT1N1YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+	"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+	"SM49AwEHA0IABM6DYbF6V56rtJICZW14Vk0A8NpfOuEikJJrJ6ASoYDb42NJdn0c\n"
+	"MRwGNF5lKhtfZZk/1h1/+zLJcirh9FGpz8ujRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+	"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
+	"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
+	"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
+	"-----END CERTIFICATE-----\n"
+	"-----BEGIN CERTIFICATE-----\n"
+	"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
+	"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+	"MREwDwYDVQQDDAhNT1N1YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+	"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+	"SM49AwEHA0IABME9TAGAZhz7PGrY4s8mOFZmdk7Wb/dkuh+rq6no1xZm9Q+y832U\n"
+	"NAuAYTGGw8SELv1yIU/Hye/riQOyrfnKCH2jRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+	"AQEwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBR57/L4BnOwi9Y2XouUItduuYUR\n"
+	"vDAKBggqhkjOPQQDAgNJADBGAiEAgIUor3jx61tB7/mI6RmHEWMSdoJbF+h6OY5c\n"
+	"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
+	"-----END CERTIFICATE-----\n";
+
+const char ContractPrivKey[] = "-----BEGIN EC PRIVATE KEY-----\n"
+	"Proc-Type: 4,ENCRYPTED\n"
+	"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
+	"\n"
+	"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
+	"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
+	"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
+	"-----END EC PRIVATE KEY-----\n";
 
 static void init_v2gExiDoc_response(struct v2gEXIDocument *exiDoc) {
 	init_v2gEXIDocument(exiDoc);
@@ -980,153 +1065,12 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		PRINTF("%c", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes[i]);
 	}
 	PRINTF("\r\n");*/
-	// Use OEMProvisioningCert to encrypt CertificateInstallationRes
-
-	/*******************************
-	* Check Signature from Request 
-	********************************/
-	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-	struct v2gEXIFragment *auth_fragment;
-
-	auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
-	PRINTF("SIG 0\r\n");
-	init_v2gEXIFragment(auth_fragment);
-	PRINTF("SIG 0.5\r\n");
-	auth_fragment->CertificateInstallationReq_isUsed = 1u;
-	PRINTF("SIG 1\r\n");
-	memcpy(	&auth_fragment->CertificateInstallationReq, 
-			&exiIn->V2G_Message.Body.CertificateInstallationReq, 
-			sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
-	PRINTF("SIG 2\r\n");
-	if ((ret = verify_v2g_signature(sig, auth_fragment)) != 0) {
-		PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
-		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-	}
-	vPortFree(auth_fragment);
-	PRINTF("[V2G] V2G SIGNATURE OK!\r\n");
-
-	/*
-	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-            unsigned char buf[256];
-            uint16_t buffer_pos = 0;
-            struct v2gReferenceType *req_ref = &sig->SignedInfo.Reference.array[0];
-            bitstream_t stream = {
-                .size = 256,
-                .data = buf,
-                .pos  = &buffer_pos,
-                .buffer = 0,
-                .capacity = 8, // Set to 8 for send and 0 for recv
-            };
-            struct v2gEXIFragment auth_fragment;
-            uint8_t digest[32];
-            init_v2gEXIFragment(&auth_fragment);
-            auth_fragment.AuthorizationReq_isUsed = 1u;
-            memcpy(&auth_fragment.AuthorizationReq, req, sizeof(*req));
-            err = encode_v2gExiFragment(&stream, &auth_fragment);
-            if (err != 0) {
-                printf("handle_authorization: unable to encode auth fragment\n");
-                return -1;
-            }
-            sha256(buf, (size_t)buffer_pos, digest, 0);
-            if (req_ref->DigestValue.bytesLen != 32
-                || memcmp(req_ref->DigestValue.bytes, digest, 32) != 0) {
-                printf("handle_authorization: invalid digest\n");
-                res->ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-                return 0;
-            }
-	*/
-
-	// Fill output data	
-	// cpsCertChain.p12
-	const char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
-		"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
-		"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
-		"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
-		"WjBQMREwDwYDVQQDDAhDUFMgTGVhZjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVj\n"
-		"dDELMAkGA1UEBhMCREUxEzARBgoJkiaJk/IsZAEZFgNDUFMwWTATBgcqhkjOPQIB\n"
-		"BggqhkjOPQMBBwNCAAS+jbjaGuLPc0P0ncG7yHHlkrZWSD+94mgw/2CkBzj59c7B\n"
-		"SbEL1O+UspEBDANNOm1VB3m/Ps5CdsOZiC6LYNbIoz8wPTAMBgNVHRMBAf8EAjAA\n"
-		"MA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUti3euQ9dIexd+M7vTz336JJEc/kw\n"
-		"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
-		"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
-		"-----END CERTIFICATE-----\n" // CPS Leaf
-		"-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
-		"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
-		"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
-		"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
-		"WjBSMRMwEQYDVQQDDApQcm92U3ViQ0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9q\n"
-		"ZWN0MQswCQYDVQQGEwJERTETMBEGCgmSJomT8ixkARkWA0NQUzBZMBMGByqGSM49\n"
-		"AgEGCCqGSM49AwEHA0IABF/SaBVY/Mq+8KuJ1Qc6vY1e/OmsT4po4NDO32bEOrYc\n"
-		"/UuUh+KzpCsmO6ClJu6VJI5s/I2nyLg5k4JmzmXywYyjRTBDMBIGA1UdEwEB/wQI\n"
-		"MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS0GWz7jFQ+NKdjzO8E\n"
-		"zR4pNtb4wTAKBggqhkjOPQQDAgNHADBEAiB6LcgqAqI7QIAAO6IgUkx6RJLO14hY\n"
-		"171YzUwxlnKF4AIgGWjpCBXZjfDsq5YgEv7FoaLJ1j0bCwfRxDerELGNQ78=\n"
-		"-----END CERTIFICATE-----\n"
-		"-----BEGIN CERTIFICATE-----\n"
-		"MIIB1zCCAX6gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJVjJHUm9v\n"
-		"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
-		"CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTNaFw0yNTAyMTQyMDQyNTNa\n"
-		"MFIxEzARBgNVBAMMClByb3ZTdWJDQTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2pl\n"
-		"Y3QxCzAJBgNVBAYTAkRFMRMwEQYKCZImiZPyLGQBGRYDQ1BTMFkwEwYHKoZIzj0C\n"
-		"AQYIKoZIzj0DAQcDQgAEF2wsHo7ndfaHln2VhnKqdXA2miJrDxPF7Fey3X+d5yLM\n"
-		"KEInMO1wG7pRIvCjbkkRuHzgN3oMMm8AROjG5MnygKNFMEMwEgYDVR0TAQH/BAgw\n"
-		"BgEB/wIBATAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFC0hJa+cD7ManzY+ngR6\n"
-		"6z+HwjKyMAoGCCqGSM49BAMCA0cAMEQCIBLZFI8CBOuaktiw51cT8+CEp6W6yyuF\n"
-		"moqLhWMWgt2wAiBXbyvV0cMu/o0km0NWGCZx4aMad2gNxRjqJWSsaMzutw==\n"
-		"-----END CERTIFICATE-----\n"; 
-
-	// moCertChain.p12 » TODO: Check if the eMAID in the OEMProvisioning certificate is 'authorized'
-	const char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\n"
-		"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
-		"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
-		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
-		"MRkwFwYDVQQDDBBERS1BQkMtQzEyM0FCQzU2MRkwFwYDVQQKDBBSSVNFIFYyRyBQ\n"
-		"cm9qZWN0MQswCQYDVQQGEwJERTESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZI\n"
-		"zj0CAQYIKoZIzj0DAQcDQgAEsWfvdDj3SVRQgr4W55oiJRX696ciIKHSz1eUDtus\n"
-		"dMPCcpxZWknPVudzTyihh4d/zjKMPMBu3Oks8vxL1sxWFqM/MD0wDAYDVR0TAQH/\n"
-		"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
-		"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
-		"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
-		"-----END CERTIFICATE-----\n" // contractCert leaf
-		"-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
-		"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
-		"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
-		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
-		"MREwDwYDVQQDDAhNT1N1YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
-		"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
-		"SM49AwEHA0IABM6DYbF6V56rtJICZW14Vk0A8NpfOuEikJJrJ6ASoYDb42NJdn0c\n"
-		"MRwGNF5lKhtfZZk/1h1/+zLJcirh9FGpz8ujRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
-		"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
-		"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
-		"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
-		"-----END CERTIFICATE-----\n"
-		"-----BEGIN CERTIFICATE-----\n"
-		"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
-		"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
-		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
-		"MREwDwYDVQQDDAhNT1N1YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
-		"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
-		"SM49AwEHA0IABME9TAGAZhz7PGrY4s8mOFZmdk7Wb/dkuh+rq6no1xZm9Q+y832U\n"
-		"NAuAYTGGw8SELv1yIU/Hye/riQOyrfnKCH2jRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
-		"AQEwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBR57/L4BnOwi9Y2XouUItduuYUR\n"
-		"vDAKBggqhkjOPQQDAgNJADBGAiEAgIUor3jx61tB7/mI6RmHEWMSdoJbF+h6OY5c\n"
-		"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
-		"-----END CERTIFICATE-----\n";
-
-	const char ContractPrivKey[] = "-----BEGIN EC PRIVATE KEY-----\n"
-		"Proc-Type: 4,ENCRYPTED\n"
-		"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
-		"\n"
-		"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
-		"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
-		"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
-		"-----END EC PRIVATE KEY-----\n";
 
 	// Step 1: generate DH Public Key (secp256r1 according to ISO15118-2)	
 	const char pers[] = "ecdh";
 	size_t dhPubkeyLen, eMAIDLen;
 	unsigned char dhPukeyBuf[128];
-    unsigned char srv_to_cli[65]; // EC Public Key
+    //unsigned char srv_to_cli[65]; // EC Public Key
 	unsigned char iv[16], contractPkeyBytes[32], privKeyBuf[48], encryptBuf[48];
 	char eMAID[64];
 
@@ -1176,6 +1120,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	 * SERVER KEYPAIR CREATION(EVSE)
 	 * ***************************************/
 	// Step 2: create new ECDH context for server
+	PRINTF("STEP 2\r\n");
 	mbedtls_entropy_init(&entropy);
 	mbedtls_ctr_drbg_init(&ctr_drbg);
 	mbedtls_ecdh_init(&ecdh);
@@ -1191,22 +1136,25 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
                                    		mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
 		PRINTF("EC ERR 3 : %d\r\n", ret);
 	}
-	if ((ret = mbedtls_mpi_write_binary(&ecdh.Q.X, srv_to_cli, sizeof(srv_to_cli))) != 0) {
+	/*if ((ret = mbedtls_mpi_write_binary(&ecdh.Q.X, srv_to_cli, sizeof(srv_to_cli))) != 0) {
 		PRINTF("EC ERR 4 : %d\r\n", ret);
-	}
+	}*/
 	if ((ret = mbedtls_mpi_lset(&ecdh.Qp.Z, 1)) != 0) {
 		PRINTF("EC ERR 5 : %d\r\n", ret);
 	}
 	
 	// Step 3: confirm that the EV public key exists in our 'server curve' (valid point)
 	// Create ECP point from EV public key
+	PRINTF("STEP 3\r\n");
+	ecdh.Qp = keypair->Q;
+
 	PRINTF("ECP CHECK PUBKEY\r\n");
-	if ((ret = mbedtls_ecp_check_pubkey(&ecdh.grp, &keypair->Q)) != 0) {
+	if ((ret = mbedtls_ecp_check_pubkey(&ecdh.grp, &ecdh.Qp)) != 0) {
 		PRINTF("ECP CHECK ERR : %d\r\n", ret);
 	}
 
 	// Step 4: compute shared secret
-	ecdh.Qp = keypair->Q;
+	PRINTF("STEP 4\r\n");
 	if ((ret = mbedtls_ecdh_compute_shared( &ecdh.grp, &ecdh.z,
 											&ecdh.Qp, &ecdh.d,
 											mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
@@ -1295,10 +1243,44 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 										contractPkeyBytes, encryptBuf)) != 0) {
 		PRINTF("AES ENCRYPT ERR: %d\r\n", ret);
 	}
-	for (i = 0; i < sizeof(encryptBuf); i++) {
+	/*for (i = 0; i < sizeof(encryptBuf); i++) {
 		PRINTF("%02x ", encryptBuf[i]);
 	}
-	PRINTF("\r\n");
+	PRINTF("\r\n");*/
+
+	/*******************************
+	* Check Signature from Request 
+	********************************/
+	PRINTF("Checking Signature..\r\n");
+	// Use provided OEMProvisioning certificate 
+	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
+	struct v2gEXIFragment *auth_fragment;
+	mbedtls_ecdsa_context oemprov_ctx;
+	mbedtls_ecdsa_init(&oemprov_ctx);
+
+	PRINTF("1\r\n");
+	if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, &ecdh.Qp)) != 0) {
+		PRINTF("ECDSA from keypair error: %d\r\n", ret);
+	}
+	PRINTF("OEMPROV CONTEXT LOADED\r\n");
+	auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+	PRINTF("SIG 0\r\n");
+	init_v2gEXIFragment(auth_fragment);
+	PRINTF("SIG 0.5\r\n");
+	auth_fragment->CertificateInstallationReq_isUsed = 1u;
+	PRINTF("SIG 1\r\n");
+	memcpy(	&auth_fragment->CertificateInstallationReq, 
+			&exiIn->V2G_Message.Body.CertificateInstallationReq, 
+			sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
+	PRINTF("SIG 2\r\n");
+	if ((ret = verify_v2g_signature(sig, 
+									auth_fragment, 
+									&oemprov_ctx)) != 0) {
+		PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+	}
+	vPortFree(auth_fragment);
+	PRINTF("[V2G] V2G SIGNATURE OK!\r\n");
 
 	/*************************************
 	 * WRITE TO OUTPUT STRUCTURE
@@ -1437,7 +1419,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_x509_crt_free(&crt);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
-	mbedtls_ecp_point_free(keypair);
 
 	return;
 }

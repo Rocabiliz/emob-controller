@@ -26,6 +26,7 @@
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/debug.h"
 #include "mbedtls/platform.h"
+#include "mbedtls/ecdsa.h"
 
 #define DEBUG_LEVEL 1
 
@@ -79,6 +80,43 @@ const char mbedtls_secc_crt[] = "-----BEGIN CERTIFICATE-----\n"
 "BggqhkjOPQQDAgNIADBFAiEA8ywemeqJW0J0Nnp0eyJBjZN3r0hxIhq72b57KPNg\n"
 "CuUCICcnJtg5rorLHu7ydMTo8EfnTFo/RS8Bg9ke9tqpKoPU\n"
 "-----END CERTIFICATE-----\n";
+
+const char mbedtls_contract_crt[] = "-----BEGIN CERTIFICATE-----\n"
+		"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+		"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
+		"MRkwFwYDVQQDDBBERS1BQkMtQzEyM0FCQzU2MRkwFwYDVQQKDBBSSVNFIFYyRyBQ\n"
+		"cm9qZWN0MQswCQYDVQQGEwJERTESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZI\n"
+		"zj0CAQYIKoZIzj0DAQcDQgAEsWfvdDj3SVRQgr4W55oiJRX696ciIKHSz1eUDtus\n"
+		"dMPCcpxZWknPVudzTyihh4d/zjKMPMBu3Oks8vxL1sxWFqM/MD0wDAYDVR0TAQH/\n"
+		"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
+		"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
+		"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
+		"-----END CERTIFICATE-----\n" // contractCert leaf
+		/*"-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
+		"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+		"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+		"MREwDwYDVQQDDAhNT1N1YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+		"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+		"SM49AwEHA0IABM6DYbF6V56rtJICZW14Vk0A8NpfOuEikJJrJ6ASoYDb42NJdn0c\n"
+		"MRwGNF5lKhtfZZk/1h1/+zLJcirh9FGpz8ujRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+		"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
+		"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
+		"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
+		"-----END CERTIFICATE-----\n"
+		"-----BEGIN CERTIFICATE-----\n"
+		"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
+		"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+		"MREwDwYDVQQDDAhNT1N1YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+		"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+		"SM49AwEHA0IABME9TAGAZhz7PGrY4s8mOFZmdk7Wb/dkuh+rq6no1xZm9Q+y832U\n"
+		"NAuAYTGGw8SELv1yIU/Hye/riQOyrfnKCH2jRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+		"AQEwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBR57/L4BnOwi9Y2XouUItduuYUR\n"
+		"vDAKBggqhkjOPQQDAgNJADBGAiEAgIUor3jx61tB7/mI6RmHEWMSdoJbF+h6OY5c\n"
+		"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
+		"-----END CERTIFICATE-----\n"*/;
 
 const char mbedtls_srv_privkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
 "Proc-Type: 4,ENCRYPTED\n"
@@ -192,7 +230,8 @@ int tls_stack_init() {
 	int ret;
 	const char *pers = "CPO";
 	const char *pass = "123456";
-
+    struct mbedtls_x509_crt crt;
+    struct mbedtls_ecp_keypair *keypair;
 	//PRINTF("TLS INIT!\r\n");
 
 	// Initialize the different descriptors
@@ -248,6 +287,19 @@ int tls_stack_init() {
 		//PRINTF( " failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n\n", ret);
 		return ret;
 	}
+
+    // Initialize contract structure for XML signature validation
+	mbedtls_x509_crt_init(&crt);
+    mbedtls_ecdsa_init(&charge_session.v2g.contract_ctx);
+    if ((ret = mbedtls_x509_crt_parse(	&crt, 
+                                        (const unsigned char *)mbedtls_contract_crt, 
+                                        sizeof(mbedtls_contract_crt))) != 0) {
+		PRINTF("TLS INIT: CONTRACT CERT LOAD ERR : %d\r\n", ret);
+	}
+    keypair = mbedtls_pk_ec(crt.pk); /* quick access */
+    if ((ret = mbedtls_ecdsa_from_keypair(&charge_session.v2g.contract_ctx, keypair)) != 0) {
+        PRINTF("TLS INIT: loading ecdsa from keypai err: %d\r\n", ret);
+    }
 
 	return ret;
 }

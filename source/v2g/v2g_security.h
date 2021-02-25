@@ -11,6 +11,7 @@
 #include "mbedtls/sha256.h"
 #include "OpenV2G/codec/v2gEXIDatatypes.h"
 #include "utilities/fsl_debug_console.h"
+#include "mbedtls/ecdsa.h"
 
 /* 
 find_oid_value_in_name
@@ -21,6 +22,6 @@ https://stackoverflow.com/questions/51392127/how-can-you-extract-individual-oids
     Certificate Update
 */
 size_t find_oid_value_in_name(const mbedtls_x509_name *name, const char* target_short_name, char *value, size_t value_length);
-
+int verify_v2g_signature(struct v2gSignatureType *sig, struct v2gEXIFragment *auth_fragment, mbedtls_ecdsa_context *ctx);
 
 #endif /* V2G_SECURITY_H_ */

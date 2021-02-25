@@ -6,6 +6,8 @@
 #include <stdbool.h>
 
 #include "v2g/v2g_security.h"
+#include "charger/charger.h"
+#include "OpenV2G/xmldsig/xmldsigEXIDatatypes.h"
 
 size_t find_oid_value_in_name(const mbedtls_x509_name *name, const char* target_short_name, char *value, size_t value_length)
 {
@@ -57,7 +59,8 @@ size_t find_oid_value_in_name(const mbedtls_x509_name *name, const char* target_
 }
 
 int verify_v2g_signature(   struct v2gSignatureType *sig, 
-                            struct v2gEXIFragment *auth_fragment) {
+                            struct v2gEXIFragment *auth_fragment,
+                            mbedtls_ecdsa_context *ctx) {
     //struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
     unsigned char buf[1024];
     uint16_t buffer_pos = 0;
@@ -74,11 +77,11 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
 
     PRINTF("Verifying V2G Signature...\r\n");
 
+    // Part 1 - Digest (hash)
     if ((err = encode_v2gExiFragment(&stream, auth_fragment)) != 0) {
         PRINTF("handle_authorization: unable to encode auth fragment\n");
         return 1;
     }
-
     mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
     PRINTF("Signature bufferpos: %d\r\n", buffer_pos);
     PRINTF("Digest len: %d\r\n", req_ref->DigestValue.bytesLen);
@@ -88,39 +91,56 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
         return 2;
     }
 
-    /* PART 2 BELOW */
-    /*
+    // Part 2 - Content (xml signature + encryption)
+    PRINTF("V2G SIG PART2\r\n");
     struct xmldsigEXIFragment sig_fragment;
+    PRINTF("1\r\n");
     init_xmldsigEXIFragment(&sig_fragment);
+    PRINTF("2\r\n");
     sig_fragment.SignedInfo_isUsed = 1;
-    memcpy(&sig_fragment.SignedInfo, &sig->SignedInfo,
-            sizeof(struct v2gSignedInfoType));
+    PRINTF("2.5\r\n");
+    memcpy( &sig_fragment.SignedInfo, 
+            &sig->SignedInfo,
+            sizeof(sig_fragment.SignedInfo));
+    PRINTF("3\r\n");
     buffer_pos = 0;
+    PRINTF("4\r\n");
     err = encode_xmldsigExiFragment(&stream, &sig_fragment);
+    PRINTF("5\r\n");
     if (err != 0) {
         printf("error 2: error code = %d\n", err);
-        return -1;
+        return 3;
     }
-    // === Hash the signature ===
-    sha256(buf, buffer_pos, digest, 0);
-    // === Validate the ecdsa signature using the public key ===
+    PRINTF("6\r\n");
+    mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
+    PRINTF("Signature bufferpos 2: %d\r\n", buffer_pos);
+    PRINTF("7\r\n");
     if (sig->SignatureValue.CONTENT.bytesLen > 350) {
         printf("handle_authorization: signature too long\n");
-        res->ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-        return 0;
+        return 4;
     }
-    err = ecdsa_read_signature(&sd->contract.pubkey,
-                                digest, 32,
-                                sig->SignatureValue.CONTENT.bytes,
-                                sig->SignatureValue.CONTENT.bytesLen);
+    PRINTF("8\r\n");
+    // Use provided context or 'Contract' context saved in charge_session struct
+    if (ctx == NULL) {
+        err = mbedtls_ecdsa_read_signature( &charge_session.v2g.contract_ctx,
+                                            digest, 32,
+                                            sig->SignatureValue.CONTENT.bytes,
+                                            sig->SignatureValue.CONTENT.bytesLen);
+    }
+    else {
+        PRINTF("USING GIVEN Context...\r\n");
+        PRINTF("Signate BytesLen: %d\r\n", sig->SignatureValue.CONTENT.bytesLen);
+        err = mbedtls_ecdsa_read_signature( ctx,
+                                            digest, 32,
+                                            sig->SignatureValue.CONTENT.bytes,
+                                            sig->SignatureValue.CONTENT.bytesLen);
+    }
+    PRINTF("9\r\n");
     if (err != 0) {
-        res->ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-        printf("invalid signature\n");
-        return 0;
+        printf("invalid signature :%d\r\n", err);
+        return 5;
     }
-    sd->verified = true;
-    printf("Succesful verification of signature!!!\n");
-    */
+   
 
     return 0;
 }

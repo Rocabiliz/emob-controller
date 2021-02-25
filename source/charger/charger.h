@@ -13,6 +13,7 @@
 
 #include "OpenV2G/codec/v2gEXIDatatypes.h"
 #include "lwip/ip6_addr.h"
+#include "mbedtls/ecdsa.h"
 
 // Variables
 extern struct charge_session_t charge_session;
@@ -115,7 +116,12 @@ struct v2g_session_t {
         bool sessionStop_ok;
     } stateFlow;
     uint8_t ev_ip_addr[16];
+
+    // TLS Session related
     bool tls;
+    mbedtls_ecdsa_context contract_ctx;
+    //
+
     struct v2gSupportedEnergyTransferModeType energyTransferMode;
     struct supported_app_protocols_t secc_app_protocols [8];
     uint8_t challenge [16];
