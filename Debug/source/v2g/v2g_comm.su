@@ -1,9 +1,0 @@
-v2g_comm.c:93:6:my_debug	8	static
-v2g_comm.c:107:17:tls_net_send	16	static
-v2g_comm.c:123:17:tls_net_rcv	32	static
-v2g_comm.c:191:5:tls_stack_init	16	static
-v2g_comm.c:255:5:tls_conn_init	24	static
-v2g_comm.c:277:6:tls_close_conn	8	static
-v2g_comm.c:282:5:tls_handshake	0	static
-v2g_comm.c:286:7:v2g_recv	24	static
-v2g_comm.c:318:7:v2g_send	16	static

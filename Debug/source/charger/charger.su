@@ -1,3 +1,0 @@
-charger.c:14:6:set_supported_app_protocols	16	static
-charger.c:31:6:load_charger_config	40	static
-charger.c:292:6:load_v2g_session	16	static

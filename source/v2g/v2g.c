@@ -30,6 +30,9 @@
 #include "v2g/v2g_comm.h"
 #include "v2g/v2g_security.h"
 
+// FreeRTOS
+//#include "mpu_wrappers.h"
+
 // lwip include
 #include "lwip/sys.h"
 #include "lwip/api.h"
@@ -50,7 +53,7 @@
 
 static struct v2gEXIDocument exiIn, exiOut;
 
-const char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
 	"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
 	"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
 	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
@@ -88,7 +91,7 @@ const char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
 	"-----END CERTIFICATE-----\n"; 
 
 // moCertChain.p12 » TODO: Check if the eMAID in the OEMProvisioning certificate is 'authorized'
-const char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\n"
 	"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
 	"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
 	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
@@ -125,7 +128,7 @@ const char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\n"
 	"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
 	"-----END CERTIFICATE-----\n";
 
-const char ContractPrivKey[] = "-----BEGIN EC PRIVATE KEY-----\n"
+const unsigned char ContractPrivKey[] = "-----BEGIN EC PRIVATE KEY-----\n"
 	"Proc-Type: 4,ENCRYPTED\n"
 	"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
 	"\n"
@@ -176,7 +179,8 @@ static void secc_discovery_protocol(void* arg) {
     struct sdp_res_t sdp_res;
 
 	LWIP_UNUSED_ARG(arg);
-
+	//configSTACK_DEPTH_TYPE sdp_stack_depth = uxTaskGetStackHighWaterMark2(NULL);
+	//PRINTF("SDP STACK INIT: %d\r\n", sdp_stack_depth);
 	PRINTF("*****************************\r\n");
 	PRINTF("SDP - SECC Discovery Protocol\r\n");
 	PRINTF("*****************************\r\n");
@@ -281,6 +285,8 @@ static void secc_discovery_protocol(void* arg) {
 	}
 
 	PRINTF("[SDP] Breaking SDP\r\n");
+	//sdp_stack_depth = uxTaskGetStackHighWaterMark2(NULL);
+	//PRINTF("[SDP] STACK END: %d\r\n", sdp_stack_depth);
 	vTaskDelete(NULL);
 }
 
@@ -294,7 +300,7 @@ static void v2g_session(void *arg) {
 	err_t err;
 	int ret;
 	uint8_t v2g_state = 0; 
-	uint32_t buffer_pos = 0;
+	uint16_t buffer_pos = 0;
 	bitstream_t stream = {
         .size = TCP_BUFF_SIZE,
 		.data = buffer,
@@ -589,10 +595,14 @@ void supported_app_protocol_req(bitstream_t *stream) {
 	// Encode data to EXI format
 	*stream->pos = V2GTP_HEADER_LENGTH;
 	stream->capacity = 8; // as it should be for send
-	err = encode_appHandExiDocument(stream, &handshake_res);
+	if ((err = encode_appHandExiDocument(stream, &handshake_res)) != 0) {
+		PRINTF("[V2G] Encode appHandExiDoc err: %d\r\n", err);
+	}
 
 	// Write V2G header
-	err = write_v2gtpHeader(stream->data, sizeof(struct appHandAnonType_supportedAppProtocolRes), V2GTP_EXI_TYPE);
+	if ((err = write_v2gtpHeader(stream->data, sizeof(struct appHandAnonType_supportedAppProtocolRes), V2GTP_EXI_TYPE)) != 0) {
+		PRINTF("[V2G] Write V2GTPHeader err: %d\r\n", err);
+	}
 
 	stream->size = V2GTP_HEADER_LENGTH + sizeof(struct appHandAnonType_supportedAppProtocolRes);
 	return;
@@ -673,7 +683,7 @@ void handle_session_setup(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 					// The previously selected Schedule is not there - add it in the last position if array already full
 					saScheduleLen = charge_session.charger.evse_sa_schedules.SAScheduleTuple.arrayLen;
 					if (saScheduleLen == v2gSAScheduleListType_SAScheduleTuple_ARRAY_SIZE) {
-						charge_session.charger.evse_sa_schedules.SAScheduleTuple.array[saScheduleLen] = charge_session.v2g.ev_sa_schedule;
+						charge_session.charger.evse_sa_schedules.SAScheduleTuple.array[saScheduleLen-1] = charge_session.v2g.ev_sa_schedule;
 						PRINTF("[V2G] REJOIN: Replaced last SA Shedule!\r\n");
 					}
 					else {
@@ -1089,7 +1099,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	 * ***************************************/
 	// Load client certificate (OEMProvisioning - DER encoded)
 	mbedtls_x509_crt_init(&crt);
-	unsigned char certBuffer[256], pkeyBuffer[256];
+	unsigned char certBuffer[256];
 	uint8_t secretBuffer[512];
 	size_t secretLen, certLen = 256;
 	if ((ret = mbedtls_x509_crt_parse_der(	&crt, 
@@ -1207,7 +1217,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	memset(iv, 0xCC, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
 	mbedtls_pk_init(&contractPkey);
 
-	if ((ret = mbedtls_pk_parse_key(&contractPkey, ContractPrivKey, 
+	if ((ret = mbedtls_pk_parse_key(&contractPkey, ContractPrivKey,
 									sizeof(ContractPrivKey), "123456", strlen("123456"))) != 0) {
 		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
 	}
@@ -1259,7 +1269,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_ecdsa_init(&oemprov_ctx);
 
 	PRINTF("1\r\n");
-	if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, &ecdh.Qp)) != 0) {
+	if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
 		PRINTF("ECDSA from keypair error: %d\r\n", ret);
 	}
 	PRINTF("OEMPROV CONTEXT LOADED\r\n");
@@ -1345,7 +1355,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	//mbedtls_ecdh_compute_shared
 
 	// SAProvisioningCertificateChain
-	/*exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytesLen = sizeof(SAProvChain_1);
 	PRINTF("0_1\r\n");
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytes,
@@ -1813,7 +1823,7 @@ void handle_session_stop(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *ex
 		exiOut->V2G_Message.Body.SessionStopRes.ResponseCode = v2gresponseCodeType_FAILED_UnknownSession;
 	}
 
-	return 0;
+	return;
 }
 
 double v2g_physical_val_get(struct v2gPhysicalValueType val) {
@@ -1835,7 +1845,7 @@ bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader) {
 
 void v2g_init() {
 	PRINTF("V2G_INIT\r\n");
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 6500, 4) == NULL) { // 4000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 4) == NULL) { // 4000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 

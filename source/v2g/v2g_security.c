@@ -5,9 +5,12 @@
 #include <math.h>
 #include <stdbool.h>
 
+#include "mbedtls/oid.h"
 #include "v2g/v2g_security.h"
 #include "charger/charger.h"
 #include "OpenV2G/xmldsig/xmldsigEXIDatatypes.h"
+#include "OpenV2G/xmldsig/xmldsigEXIDatatypesEncoder.h"
+#include "OpenV2G/codec/v2gEXIDatatypesEncoder.h"
 
 size_t find_oid_value_in_name(const mbedtls_x509_name *name, const char* target_short_name, char *value, size_t value_length)
 {
@@ -129,7 +132,11 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
     }
     else {
         PRINTF("USING GIVEN Context...\r\n");
-        PRINTF("Signate BytesLen: %d\r\n", sig->SignatureValue.CONTENT.bytesLen);
+        PRINTF("Signature BytesLen: %d\r\n", sig->SignatureValue.CONTENT.bytesLen);
+        for (int i = 0; i < sig->SignatureValue.CONTENT.bytesLen; i++) {
+            PRINTF("%02x ", sig->SignatureValue.CONTENT.bytes[i]);
+        }
+        PRINTF("\r\n");
         err = mbedtls_ecdsa_read_signature( ctx,
                                             digest, 32,
                                             sig->SignatureValue.CONTENT.bytes,

@@ -210,7 +210,7 @@ int main(void) {
 
     /* run RTOS */
     vTaskStartScheduler();
-    PRINTF('OOOPS\r\n');
+    PRINTF("OOOPS\r\n");
 
     /* should not reach this statement */
     for (;;)
@@ -250,3 +250,6 @@ static void cp_handler(void *pvParameters) {
     }
 }
 
+void vApplicationStackOverflowHook( TaskHandle_t *pxTask, signed char *pcTaskName ){
+    PRINTF("[FREE-RTOS-DEBUG] Stack Overflow detection in Task %s", pcTaskName);
+}

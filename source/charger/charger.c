@@ -49,8 +49,8 @@ void load_charger_config(struct ip6_addr *ip_addr) {
     charge_session.charger.energyTransferModeList.EnergyTransferMode.array[2] = v2gEnergyTransferModeType_DC_combo_core;
     charge_session.charger.energyTransferModeList.EnergyTransferMode.array[3] = v2gEnergyTransferModeType_DC_unique;
     charge_session.charger.energyTransferModeList.EnergyTransferMode.array[4] = v2gEnergyTransferModeType_AC_three_phase_core;
-    charge_session.charger.energyTransferModeList.EnergyTransferMode.array[5] = v2gEnergyTransferModeType_AC_single_phase_core;
-    charge_session.charger.energyTransferModeList.EnergyTransferMode.arrayLen = 6;
+    //charge_session.charger.energyTransferModeList.EnergyTransferMode.array[5] = v2gEnergyTransferModeType_AC_single_phase_core;
+    charge_session.charger.energyTransferModeList.EnergyTransferMode.arrayLen = 5;
 
     // Present values
     charge_session.charger.evse_present_voltage.Unit = v2gunitSymbolType_V;
@@ -160,9 +160,10 @@ void load_charger_config(struct ip6_addr *ip_addr) {
 	    "AC_DC_Charging", 
 	    charge_session.charger.evse_charge_service.ServiceName.charactersLen);
     charge_session.charger.evse_charge_service.ServiceScope_isUsed = 1u;
-    charge_session.charger.evse_charge_service.ServiceScope.characters[0] = 100;
-    charge_session.charger.evse_charge_service.ServiceScope.characters[1] = "\0";
-    charge_session.charger.evse_charge_service.ServiceScope.charactersLen = 1;
+    charge_session.charger.evse_charge_service.ServiceScope.charactersLen = 16;
+    memcpy(charge_session.charger.evse_charge_service.ServiceScope.characters,
+        "ServiceScope_ABC",
+        charge_session.charger.evse_charge_service.ServiceScope.charactersLen);
     charge_session.charger.evse_charge_service.FreeService = 1; // If false, the payment will be made with PaymentOption
     memcpy(	&charge_session.charger.evse_charge_service.SupportedEnergyTransferMode.EnergyTransferMode,
 			&charge_session.charger.energyTransferModeList.EnergyTransferMode,

@@ -43,7 +43,7 @@ uint16_t rx_buffer_len;
 /////////////////////////
 
 //  TLS Certificates
-const char mbedtls_intermediate_cpo_crt[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char mbedtls_intermediate_cpo_crt[] = "-----BEGIN CERTIFICATE-----\n"
 "MIIB1zCCAX2gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJQ1BPU3Vi\n"
 "Q0ExMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
 "CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTJaFw0yMjAyMTUyMDQyNTJa\n"
@@ -68,7 +68,7 @@ const char mbedtls_intermediate_cpo_crt[] = "-----BEGIN CERTIFICATE-----\n"
 "vMVcAaQdudkCICdijOQfLkeet1EPW1VQhVw9xwao8KEwSqjbQnrmWwTJ\n"
 "-----END CERTIFICATE-----\n";
 
-const char mbedtls_secc_crt[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char mbedtls_secc_crt[] = "-----BEGIN CERTIFICATE-----\n"
 "MIIB0DCCAXagAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJQ1BPU3Vi\n"
 "Q0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
 "CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTJaFw0yMTA0MTYyMDQyNTJa\n"
@@ -81,7 +81,7 @@ const char mbedtls_secc_crt[] = "-----BEGIN CERTIFICATE-----\n"
 "CuUCICcnJtg5rorLHu7ydMTo8EfnTFo/RS8Bg9ke9tqpKoPU\n"
 "-----END CERTIFICATE-----\n";
 
-const char mbedtls_contract_crt[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char mbedtls_contract_crt[] = "-----BEGIN CERTIFICATE-----\n"
 		"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
 		"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
 		"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
@@ -118,7 +118,7 @@ const char mbedtls_contract_crt[] = "-----BEGIN CERTIFICATE-----\n"
 		"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
 		"-----END CERTIFICATE-----\n"*/;
 
-const char mbedtls_srv_privkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
+const unsigned char mbedtls_srv_privkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
 "Proc-Type: 4,ENCRYPTED\n"
 "DEK-Info: AES-128-CBC,0DCD40131236BE920BB75E6AA2EF3D07\n"
 "\n"
@@ -142,13 +142,14 @@ void my_debug(void *ctx, int level, const char *file, int line, const char *str)
 	PRINTF("%s:%04d: |%d| %s", basename, line, level, str);
 }
 
-static uint16_t tls_net_send(void *ctx, const unsigned char *buf, size_t len) {
+static int tls_net_send(void *ctx, const unsigned char *buf, size_t len) {
 	err_t err;
-    uint8_t buffer[TCP_BUFF_SIZE];
     
 	//PRINTF(">>> TLS SEND! Len = %d\r\n", len);
     
-	err = netconn_write(ctx, buf, len, NETCONN_COPY);
+	if ((err = netconn_write(ctx, buf, len, NETCONN_COPY)) != 0) {
+		PRINTF("TLS_SEND Error %d\r\n", err);
+	}
 
     return len;
 }
@@ -158,7 +159,7 @@ static uint16_t tls_net_send(void *ctx, const unsigned char *buf, size_t len) {
 - all the shifts: buf = rx_buffer[len];
 - store the last 'len' pointed by buf
 */
-static uint16_t tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
+static int tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
     uint16_t result = 0;
     struct netbuf *temp_buf;
     int i = 0;
@@ -304,7 +305,7 @@ int tls_stack_init() {
 	return ret;
 }
 
-int tls_conn_init(int *conn) {
+int tls_conn_init(struct netconn *conn) {
     int ret = ERR_OK;
     mbedtls_ssl_init(&ssl);
 
@@ -322,7 +323,7 @@ int tls_conn_init(int *conn) {
 		ret = ret;
 	}
 
-    mbedtls_ssl_set_bio(&ssl, conn, tls_net_send, tls_net_rcv, NULL);
+    mbedtls_ssl_set_bio(&ssl, conn, &tls_net_send, &tls_net_rcv, NULL);
     return ret;
 }
 
