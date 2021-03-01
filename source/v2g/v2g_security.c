@@ -97,32 +97,25 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
     // Part 2 - Content (xml signature + encryption)
     PRINTF("V2G SIG PART2\r\n");
     struct xmldsigEXIFragment sig_fragment;
-    PRINTF("1\r\n");
     init_xmldsigEXIFragment(&sig_fragment);
-    PRINTF("2\r\n");
     sig_fragment.SignedInfo_isUsed = 1;
-    PRINTF("2.5\r\n");
     memcpy( &sig_fragment.SignedInfo, 
             &sig->SignedInfo,
             sizeof(sig_fragment.SignedInfo));
-    PRINTF("3\r\n");
     buffer_pos = 0;
-    PRINTF("4\r\n");
     err = encode_xmldsigExiFragment(&stream, &sig_fragment);
-    PRINTF("5\r\n");
     if (err != 0) {
         printf("error 2: error code = %d\n", err);
         return 3;
     }
-    PRINTF("6\r\n");
-    mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
+
+    //mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
     PRINTF("Signature bufferpos 2: %d\r\n", buffer_pos);
-    PRINTF("7\r\n");
     if (sig->SignatureValue.CONTENT.bytesLen > 350) {
         printf("handle_authorization: signature too long\n");
         return 4;
     }
-    PRINTF("8\r\n");
+
     // Use provided context or 'Contract' context saved in charge_session struct
     if (ctx == NULL) {
         err = mbedtls_ecdsa_read_signature( &charge_session.v2g.contract_ctx,
@@ -132,22 +125,21 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
     }
     else {
         PRINTF("USING GIVEN Context...\r\n");
-        PRINTF("Signature BytesLen: %d\r\n", sig->SignatureValue.CONTENT.bytesLen);
+        /*PRINTF("Signature BytesLen: %d\r\n", sig->SignatureValue.CONTENT.bytesLen);
         for (int i = 0; i < sig->SignatureValue.CONTENT.bytesLen; i++) {
             PRINTF("%02x ", sig->SignatureValue.CONTENT.bytes[i]);
         }
-        PRINTF("\r\n");
+        PRINTF("\r\n");*/
         err = mbedtls_ecdsa_read_signature( ctx,
                                             digest, 32,
                                             sig->SignatureValue.CONTENT.bytes,
                                             sig->SignatureValue.CONTENT.bytesLen);
     }
-    PRINTF("9\r\n");
+
     if (err != 0) {
         printf("invalid signature :%d\r\n", err);
         return 5;
     }
-   
 
     return 0;
 }

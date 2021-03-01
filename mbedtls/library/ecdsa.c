@@ -753,14 +753,12 @@ int mbedtls_ecdsa_read_signature_restartable( mbedtls_ecdsa_context *ctx,
     if( ( ret = mbedtls_asn1_get_tag( &p, end, &len,
                     MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
     {
-        PRINTF("ECSA 1\r\n");
         ret += MBEDTLS_ERR_ECP_BAD_INPUT_DATA;
         goto cleanup;
     }
 
     if( p + len != end )
     {
-        PRINTF("ECSA 2\r\n");
         ret = MBEDTLS_ERR_ECP_BAD_INPUT_DATA +
               MBEDTLS_ERR_ASN1_LENGTH_MISMATCH;
         goto cleanup;
@@ -769,7 +767,6 @@ int mbedtls_ecdsa_read_signature_restartable( mbedtls_ecdsa_context *ctx,
     if( ( ret = mbedtls_asn1_get_mpi( &p, end, &r ) ) != 0 ||
         ( ret = mbedtls_asn1_get_mpi( &p, end, &s ) ) != 0 )
     {
-        PRINTF("ECSA 3\r\n");
         ret += MBEDTLS_ERR_ECP_BAD_INPUT_DATA;
         goto cleanup;
     }

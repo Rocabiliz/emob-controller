@@ -53,7 +53,7 @@
 
 static struct v2gEXIDocument exiIn, exiOut;
 
-const unsigned char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char SAProvisioningCertificateChain_leaf[] = "-----BEGIN CERTIFICATE-----\n"
 	"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
 	"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
 	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
@@ -64,8 +64,8 @@ const unsigned char SAProvisioningCertificateChain[] = "-----BEGIN CERTIFICATE--
 	"MA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUti3euQ9dIexd+M7vTz336JJEc/kw\n"
 	"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
 	"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
-	"-----END CERTIFICATE-----\n" // CPS Leaf
-	"-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
+	"-----END CERTIFICATE-----\n"; // CPS Leaf
+const unsigned char SAProvisioningCertificateChain_inter[] = "-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
 	"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
 	"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
 	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
@@ -1062,15 +1062,15 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_UnknownSession;
 	}
 
-	for (i = 0; i < exiIn->V2G_Message.Body.CertificateInstallationReq.Id.charactersLen; i++) {
+	/*for (i = 0; i < exiIn->V2G_Message.Body.CertificateInstallationReq.Id.charactersLen; i++) {
 		PRINTF("%c", exiIn->V2G_Message.Body.CertificateInstallationReq.Id.characters[i]);
 	}
-	PRINTF("\r\n");
-	PRINTF("[V2G] OEMPROV LEN: %d\r\n", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
-	/*for (i = 0; i < 20; i++) {
+	PRINTF("\r\n")*/;
+	/*PRINTF("[V2G] OEMPROV LEN: %d\r\n", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
+	for (i = 0; i < 20; i++) {
 		PRINTF("%02x ", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes[i]);
-	}*/
-	PRINTF("\r\n");
+	}
+	PRINTF("\r\n");*/
 	/*for (i = 0; i < exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen; i++) {
 		PRINTF("%c", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes[i]);
 	}
@@ -1107,18 +1107,18 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 											exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen)) != 0) {
 		PRINTF("CERT LOAD ERR : %d\r\n", ret);
 	}
-	PRINTF("GETTING PUB KEY..\r\n");
+
 	// Get public key of OEMProvisioning
 	if ((ret = mbedtls_pk_write_pubkey_pem(&crt.pk, certBuffer, certLen)) != 0) {
 		PRINTF("PUBKEY WRITE ERR : %d\r\n", ret);
 	}
 	certLen = strlen((char *)certBuffer);
 
-	PRINTF("PUBKEY LEN : %d\r\n", certLen);
-	/*for (i = 0; i < certLen; i++) {
+	/*PRINTF("PUBKEY LEN : %d\r\n", certLen);
+	for (i = 0; i < certLen; i++) {
 		PRINTF("%02x ", certBuffer[i]);
-	}*/
-	PRINTF("\r\n"); // OK!
+	}
+	PRINTF("\r\n"); */ // OK!
 
 	keypair = mbedtls_pk_ec(crt.pk); /* quick access */
 	/*PRINTF("X:\r\n");
@@ -1130,7 +1130,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	 * SERVER KEYPAIR CREATION(EVSE)
 	 * ***************************************/
 	// Step 2: create new ECDH context for server
-	PRINTF("STEP 2\r\n");
 	mbedtls_entropy_init(&entropy);
 	mbedtls_ctr_drbg_init(&ctr_drbg);
 	mbedtls_ecdh_init(&ecdh);
@@ -1155,16 +1154,12 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	
 	// Step 3: confirm that the EV public key exists in our 'server curve' (valid point)
 	// Create ECP point from EV public key
-	PRINTF("STEP 3\r\n");
 	ecdh.Qp = keypair->Q;
-
-	PRINTF("ECP CHECK PUBKEY\r\n");
 	if ((ret = mbedtls_ecp_check_pubkey(&ecdh.grp, &ecdh.Qp)) != 0) {
 		PRINTF("ECP CHECK ERR : %d\r\n", ret);
 	}
 
 	// Step 4: compute shared secret
-	PRINTF("STEP 4\r\n");
 	if ((ret = mbedtls_ecdh_compute_shared( &ecdh.grp, &ecdh.z,
 											&ecdh.Qp, &ecdh.d,
 											mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
@@ -1176,11 +1171,10 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 											&ctr_drbg)) != 0) {
 		PRINTF("EC ERR 8 : %d\r\n", ret);
 	}
-	PRINTF("Secret LEN: %d\r\n", secretLen);
-	/*for (i = 0; i < secretLen; i++) {
+	/*PRINTF("Secret LEN: %d\r\n", secretLen);
+	for (i = 0; i < secretLen; i++) {
 		PRINTF("%02x ", secretBuffer[i]);
 	}*/
-	PRINTF("DONE!\r\n");
 
 	// Step 5: Generate shared key based on shared secret
 	uint8_t keyInfo[3] = {0x01, 0x55, 0x56}; // Salt - V2G-818 
@@ -1201,7 +1195,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 								sessionKey, sizeof(sessionKey))) != 0) {
 		PRINTF("HMAC KDF ERR: %d\r\n", ret);
 	}
-	PRINTF("SESSION KEY DONE\r\n");
 	/*for (i = 0; i < 32; i++) {
 		PRINTF("%02x ", sessionKey[i]);
 	}
@@ -1261,36 +1254,39 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	/*******************************
 	* Check Signature from Request 
 	********************************/
-	PRINTF("Checking Signature..\r\n");
-	// Use provided OEMProvisioning certificate 
-	struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-	struct v2gEXIFragment *auth_fragment;
-	mbedtls_ecdsa_context oemprov_ctx;
-	mbedtls_ecdsa_init(&oemprov_ctx);
+	PRINTF("[V2G] Checking Signature..\r\n");
+	if (exiIn->V2G_Message.Header.Signature_isUsed) {
+		struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
+		struct v2gEXIFragment *auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
 
-	PRINTF("1\r\n");
-	if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
-		PRINTF("ECDSA from keypair error: %d\r\n", ret);
+		mbedtls_ecdsa_context oemprov_ctx;
+		mbedtls_ecdsa_init(&oemprov_ctx);
+		init_v2gEXIFragment(auth_fragment);
+
+		// Use provided OEMProvisioning certificate 
+		if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
+			PRINTF("ECDSA from keypair error: %d\r\n", ret);
+		}
+
+		auth_fragment->CertificateInstallationReq_isUsed = 1u;
+		memcpy(	&auth_fragment->CertificateInstallationReq, 
+				&exiIn->V2G_Message.Body.CertificateInstallationReq, 
+				sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
+
+		if ((ret = verify_v2g_signature(sig, 
+										auth_fragment, 
+										&oemprov_ctx)) != 0) {
+			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+			//exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+		}
+		vPortFree(auth_fragment);
 	}
-	PRINTF("OEMPROV CONTEXT LOADED\r\n");
-	auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
-	PRINTF("SIG 0\r\n");
-	init_v2gEXIFragment(auth_fragment);
-	PRINTF("SIG 0.5\r\n");
-	auth_fragment->CertificateInstallationReq_isUsed = 1u;
-	PRINTF("SIG 1\r\n");
-	memcpy(	&auth_fragment->CertificateInstallationReq, 
-			&exiIn->V2G_Message.Body.CertificateInstallationReq, 
-			sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
-	PRINTF("SIG 2\r\n");
-	if ((ret = verify_v2g_signature(sig, 
-									auth_fragment, 
-									&oemprov_ctx)) != 0) {
-		PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+	else {
+		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
 		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
 	}
-	vPortFree(auth_fragment);
-	PRINTF("[V2G] V2G SIGNATURE OK!\r\n");
+	PRINTF("[V2G] Signature check performed!\r\n");
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_OK;
 
 	/*************************************
 	 * WRITE TO OUTPUT STRUCTURE
@@ -1301,18 +1297,21 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 												dhPukeyBuf, sizeof(dhPukeyBuf))) != 0) {
 		PRINTF("WRITE BINARY PUB KEY ERR: %d\r\n", ret);
 	}
-	PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
+	//PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
 	/*for (i = 0; i < dhPubkeyLen; i++) {
 		PRINTF("%02x ", dhPukeyBuf[i]);
 	} */ // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
 
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen = 3;
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters,
-			"id3",
-			exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen);
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytesLen = dhPubkeyLen;
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytes, 
-			dhPukeyBuf, dhPubkeyLen);
+	// SAProvisioningCertificateChain
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 1;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.charactersLen = 3;
+	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.characters, "id1", 3);
+
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates_isUsed = 0;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytesLen = sizeof(SAProvisioningCertificateChain_leaf);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytes,
+			SAProvisioningCertificateChain_leaf,
+			sizeof(SAProvisioningCertificateChain_leaf));
 
 	// Encrypted Contract Private Key
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
@@ -1321,6 +1320,15 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytes,
 			encryptBuf,
 			sizeof(encryptBuf));
+
+	// DH Public Key
+	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen = 3;
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters,
+			"id3",
+			exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen);
+	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytesLen = dhPubkeyLen;
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytes, 
+			dhPukeyBuf, dhPubkeyLen);
 
 	// eMAID
 	// ContractCertificateChain, find DN of certificate
@@ -1350,9 +1358,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 			eMAIDLen);
 
 	/*
-	
-	// Encript private key
-	//mbedtls_ecdh_compute_shared
 
 	// SAProvisioningCertificateChain
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
@@ -1399,29 +1404,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 			ContractSign_Sub_2,
 			sizeof(ContractSign_Sub_2));
 	PRINTF("2\r\n");
-	// ContractSignatureEncryptedPrivateKey
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
-	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.characters, "id2", 3);
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytesLen = sizeof(EncryptedPrivKey);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytes,
-			EncryptedPrivKey,
-			sizeof(EncryptedPrivKey));
-	PRINTF("3\r\n");
-	// DHPublicKey
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.charactersLen = 3;
-	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.Id.characters, "id3", 3);
-	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytesLen = sizeof(DHPublicKey);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.DHpublickey.CONTENT.bytes,
-			DHPublicKey,
-			sizeof(DHPublicKey));
-	PRINTF("4\r\n");
-	// eMAID
-	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen = 3;
-	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.characters, "id4", 3);
-	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.CONTENT.charactersLen = sizeof(eMAID);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.CONTENT.characters,
-			eMAID,
-			sizeof(eMAID));*/
+	*/
 
 	PRINTF("Certificate Installation DONE!\r\n");
 
@@ -1429,6 +1412,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_x509_crt_free(&crt);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
+	mbedtls_ecp_keypair_free(keypair);
 
 	return;
 }
