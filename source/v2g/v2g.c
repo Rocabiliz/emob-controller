@@ -1357,57 +1357,30 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 			eMAID,
 			eMAIDLen);
 
-	/*
+	/*************************************
+	 * CREATING V2G SIGNATURE
+	 * ***********************************/
+	struct v2gEXIFragment *auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+    init_v2gEXIFragment(auth_fragment);
+    auth_fragment->CertificateInstallationRes_isUsed = 1u;
+	PRINTF("SIZE OF CERTIFICATE INSTALL RES: %d\r\n", sizeof(auth_fragment->CertificateInstallationRes));
+    memcpy(	&auth_fragment->CertificateInstallationRes, 
+			&exiOut->V2G_Message.Body.CertificateInstallationRes, 
+			sizeof(auth_fragment->CertificateInstallationRes));
+			
+	if ((ret = create_v2g_signature(auth_fragment, 
+									&exiOut->V2G_Message.Header.Signature,
+									&ctr_drbg)) != 0) {
+		PRINTF("[V2G] CREATING V2G ERR: %d\r\n", ret);
+	}
+	else {
+		exiOut->V2G_Message.Header.Signature_isUsed = 1u;
+	}
+	vPortFree(auth_fragment);
 
-	// SAProvisioningCertificateChain
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytesLen = sizeof(SAProvChain_1);
-	PRINTF("0_1\r\n");
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytes,
-			SAProvChain_1,
-			sizeof(SAProvChain_1));
-	PRINTF("0_2\r\n");
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates_isUsed = 0u;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.arrayLen = 2;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytesLen = sizeof(SAProvChain_Sub_1);
-	PRINTF("0_3 SIZEOF: %d\r\n", sizeof(SAProvChain_Sub_1));
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytes,
-			SAProvChain_Sub_1,
-			sizeof(SAProvChain_Sub_1));
-	PRINTF("0_4\r\n");
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(SAProvChain_Sub_2);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytes,
-			SAProvChain_Sub_2,
-			sizeof(SAProvChain_Sub_2));
-	PRINTF("1\r\n");
 
-	// ContractSignatureCertChain
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id_isUsed = 1u;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id.charactersLen = 3;
-	PRINTF("1_1\r\n");
-	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id.characters, "id1", 3);
-	PRINTF("1_2\r\n");
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Certificate.bytesLen = sizeof(ContractSign_1);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Certificate.bytes,
-			ContractSign_1,
-			sizeof(ContractSign_1));
-	PRINTF("1_3\r\n");
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates_isUsed = 0u;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.arrayLen = 2;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytesLen = sizeof(ContractSign_Sub_1);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytes,
-			ContractSign_Sub_1,
-			sizeof(ContractSign_Sub_1));
-	PRINTF("1_4\r\n");
-	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(ContractSign_Sub_2);
-	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytes,
-			ContractSign_Sub_2,
-			sizeof(ContractSign_Sub_2));
-	PRINTF("2\r\n");
-	*/
-
+	// Cleanup
 	PRINTF("Certificate Installation DONE!\r\n");
-
 	mbedtls_ecdh_free(&ecdh);
 	mbedtls_x509_crt_free(&crt);
 	mbedtls_ctr_drbg_free(&ctr_drbg);

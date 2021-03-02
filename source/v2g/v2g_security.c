@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "mbedtls/oid.h"
+#include "mbedtls/md.h"
 #include "v2g/v2g_security.h"
 #include "charger/charger.h"
 #include "OpenV2G/xmldsig/xmldsigEXIDatatypes.h"
@@ -140,6 +141,97 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
         printf("invalid signature :%d\r\n", err);
         return 5;
     }
+
+    return 0;
+}
+
+/*
+sign_auth_request(struct v2gAuthorizationReqType *req,
+                      ecdsa_context *key,
+                      ctr_drbg_context *ctr_drbg,
+                      struct v2gSignatureType *sig)
+
+sign_auth_request(req, &s->contract.key,
+                        &s->contract.ctr_drbg,
+                        &exiIn.V2G_Message.Header.Signature);
+*/
+int create_v2g_signature(struct v2gEXIFragment *auth_fragment, struct v2gSignatureType *sig, mbedtls_ctr_drbg_context *ctr_drbg) {
+    
+    int err;
+    struct xmldsigEXIFragment sig_fragment;
+    memset(&sig_fragment, 0, sizeof(sig_fragment));
+    struct xmldsigReferenceType *ref = &sig_fragment.SignedInfo.Reference.array[0];
+    char uri[4] = {"#ID1"};
+	char arrayCanonicalEXI[35] = {"http://www.w3.org/TR/canonical-exi/"};
+	char arrayxmldsigSHA256[51] = {"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"};
+	char arrayxmlencSHA256[39] = {"http://www.w3.org/2001/04/xmlenc#sha256"};
+    unsigned char buf[512];
+    uint8_t digest[32];
+    uint16_t buffer_pos = 0;
+    bitstream_t stream = {
+        .size = 512,
+        .data = buf,
+        .pos  = &buffer_pos,
+        .buffer = 0,
+        .capacity = 8, // Set to 8 for send and 0 for recv
+    };
+
+    if ((err = encode_v2gExiFragment(&stream, auth_fragment)) != 0) {
+        printf("error 1: error code = %d\n", err);
+        return -1;
+    }
+    mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
+
+	init_xmldsigEXIFragment(&sig_fragment);
+	sig_fragment.SignedInfo_isUsed = 1;
+	//init_xmldsigSignedInfoType(&sig_fragment.SignedInfo);
+	//init_xmldsigCanonicalizationMethodType(&sig_fragment.SignedInfo.CanonicalizationMethod);
+	sig_fragment.SignedInfo.CanonicalizationMethod.Algorithm.charactersLen = 35;
+	memcpy(sig_fragment.SignedInfo.CanonicalizationMethod.Algorithm.characters, arrayCanonicalEXI, 35);
+	sig_fragment.SignedInfo.SignatureMethod.HMACOutputLength_isUsed = 0;
+	sig_fragment.SignedInfo.SignatureMethod.Algorithm.charactersLen = 51;
+	strncpy(sig_fragment.SignedInfo.SignatureMethod.Algorithm.characters, arrayxmldsigSHA256, 51);
+	sig_fragment.SignedInfo.Reference.arrayLen = 1;
+	ref->URI_isUsed = 1;
+	ref->URI.charactersLen = 4;
+	memcpy(ref->URI.characters, uri, 4);
+	// "http://www.w3.org/TR/canonical-exi/"
+	ref->Transforms_isUsed = 1;
+	ref->Transforms.Transform.arrayLen = 1;
+	ref->Transforms.Transform.array[0].Algorithm.charactersLen = 35;
+	strncpy(ref->Transforms.Transform.array[0].Algorithm.characters, arrayCanonicalEXI, 35); // Will copy 35 characters from arrayCanonicalEXI to characters
+	ref->Transforms.Transform.array[0].XPath.arrayLen = 0;
+	ref->DigestMethod.Algorithm.charactersLen = 39;
+	strncpy(ref->DigestMethod.Algorithm.characters, arrayxmlencSHA256, 39);
+	ref->DigestValue.bytesLen = 32;
+	memcpy(ref->DigestValue.bytes, digest, 32);
+    buffer_pos = 0;
+
+    if ((err = encode_xmldsigExiFragment(&stream, &sig_fragment)) != 0) {
+        PRINTF("error 2: error code = %d\n", err);
+        return 1;
+    }
+
+    memcpy(&sig->SignedInfo, &sig_fragment.SignedInfo, sizeof(struct v2gSignedInfoType));
+    mbedtls_sha256(buf, buffer_pos, digest, 0);
+    if ((err = mbedtls_ecdsa_write_signature(   &charge_session.v2g.contract_ctx,
+                                                MBEDTLS_MD_SHA256,
+                                                digest, 32,
+                                                sig->SignatureValue.CONTENT.bytes,
+                                                (size_t*)&sig->SignatureValue.CONTENT.bytesLen,
+                                                mbedtls_ctr_drbg_random,
+                                                ctr_drbg)) != 0) {
+        PRINTF("ecdsa write sig err = %d\n", err);
+        return 2;   
+    }
+
+    sig->KeyInfo_isUsed = 0;
+	sig->Id_isUsed = 0;
+	sig->Object.arrayLen = 1;
+	sig->Object.array[0].Id_isUsed = 0;
+	sig->Object.array[0].MimeType_isUsed = 0;
+	sig->Object.array[0].Encoding_isUsed = 0;
+	sig->SignatureValue.Id_isUsed = 0;
 
     return 0;
 }
