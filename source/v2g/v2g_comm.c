@@ -368,7 +368,7 @@ err_t v2g_recv(struct netconn *conn, uint8_t buf[TCP_BUFF_SIZE], uint16_t *len) 
     return err;
 }
 
-err_t v2g_send(struct netconn *conn, uint8_t buf[TCP_BUFF_SIZE], size_t len) {
+err_t v2g_send(struct netconn *conn, uint8_t *buf, size_t len) {
     err_t res;
 
     // TLS Enabled

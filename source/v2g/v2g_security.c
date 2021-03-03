@@ -161,10 +161,10 @@ int create_v2g_signature(struct v2gEXIFragment *auth_fragment, struct v2gSignatu
     struct xmldsigEXIFragment sig_fragment;
     memset(&sig_fragment, 0, sizeof(sig_fragment));
     struct xmldsigReferenceType *ref = &sig_fragment.SignedInfo.Reference.array[0];
-    char uri[4] = {"#ID1"};
-	char arrayCanonicalEXI[35] = {"http://www.w3.org/TR/canonical-exi/"};
-	char arrayxmldsigSHA256[51] = {"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"};
-	char arrayxmlencSHA256[39] = {"http://www.w3.org/2001/04/xmlenc#sha256"};
+    const char uri[4] = {"#ID1"};
+	const char arrayCanonicalEXI[35] = {"http://www.w3.org/TR/canonical-exi/"};
+	const char arrayxmldsigSHA256[51] = {"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"};
+	const char arrayxmlencSHA256[39] = {"http://www.w3.org/2001/04/xmlenc#sha256"};
     unsigned char buf[512];
     uint8_t digest[32];
     uint16_t buffer_pos = 0;

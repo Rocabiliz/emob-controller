@@ -65,7 +65,7 @@ const unsigned char SAProvisioningCertificateChain_leaf[] = "-----BEGIN CERTIFIC
 	"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
 	"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
 	"-----END CERTIFICATE-----\n"; // CPS Leaf
-const unsigned char SAProvisioningCertificateChain_inter[] = "-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
+const unsigned char SAProvisioningCertificateChain_inter_1[] = "-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
 	"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
 	"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
 	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
@@ -76,8 +76,8 @@ const unsigned char SAProvisioningCertificateChain_inter[] = "-----BEGIN CERTIFI
 	"MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS0GWz7jFQ+NKdjzO8E\n"
 	"zR4pNtb4wTAKBggqhkjOPQQDAgNHADBEAiB6LcgqAqI7QIAAO6IgUkx6RJLO14hY\n"
 	"171YzUwxlnKF4AIgGWjpCBXZjfDsq5YgEv7FoaLJ1j0bCwfRxDerELGNQ78=\n"
-	"-----END CERTIFICATE-----\n"
-	"-----BEGIN CERTIFICATE-----\n"
+	"-----END CERTIFICATE-----\n";
+const unsigned char SAProvisioningCertificateChain_inter_2[] = "-----BEGIN CERTIFICATE-----\n"
 	"MIIB1zCCAX6gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJVjJHUm9v\n"
 	"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
 	"CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTNaFw0yNTAyMTQyMDQyNTNa\n"
@@ -1251,42 +1251,49 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	PRINTF("\r\n");*/
 
+	mbedtls_x509_crt_free(&crt);
+	mbedtls_ctr_drbg_free(&ctr_drbg);
+	mbedtls_entropy_free(&entropy);
+
 	/*******************************
 	* Check Signature from Request 
 	********************************/
 	PRINTF("[V2G] Checking Signature..\r\n");
-	if (exiIn->V2G_Message.Header.Signature_isUsed) {
+	/*if (exiIn->V2G_Message.Header.Signature_isUsed) {
 		struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-		struct v2gEXIFragment *auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+		//struct v2gEXIFragment *auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+		struct v2gEXIFragment auth_fragment;
 
 		mbedtls_ecdsa_context oemprov_ctx;
 		mbedtls_ecdsa_init(&oemprov_ctx);
-		init_v2gEXIFragment(auth_fragment);
+		init_v2gEXIFragment(&auth_fragment);
 
 		// Use provided OEMProvisioning certificate 
 		if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
 			PRINTF("ECDSA from keypair error: %d\r\n", ret);
 		}
 
-		auth_fragment->CertificateInstallationReq_isUsed = 1u;
-		memcpy(	&auth_fragment->CertificateInstallationReq, 
+		auth_fragment.CertificateInstallationReq_isUsed = 1u;
+		memcpy(	&auth_fragment.CertificateInstallationReq, 
 				&exiIn->V2G_Message.Body.CertificateInstallationReq, 
 				sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
 
 		if ((ret = verify_v2g_signature(sig, 
-										auth_fragment, 
+										&auth_fragment, 
 										&oemprov_ctx)) != 0) {
 			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
 			//exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
 		}
-		vPortFree(auth_fragment);
+		//vPortFree(auth_fragment);
 	}
 	else {
 		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
 		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-	}
+	}*/
 	PRINTF("[V2G] Signature check performed!\r\n");
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_OK;
+
+	mbedtls_ecp_keypair_free(keypair);
 
 	/*************************************
 	 * WRITE TO OUTPUT STRUCTURE
@@ -1297,6 +1304,8 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 												dhPukeyBuf, sizeof(dhPukeyBuf))) != 0) {
 		PRINTF("WRITE BINARY PUB KEY ERR: %d\r\n", ret);
 	}
+	mbedtls_ecdh_free(&ecdh);
+
 	//PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
 	/*for (i = 0; i < dhPubkeyLen; i++) {
 		PRINTF("%02x ", dhPukeyBuf[i]);
@@ -1307,11 +1316,22 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.charactersLen = 3;
 	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.characters, "id1", 3);
 
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates_isUsed = 0;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates_isUsed = 1;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.arrayLen = 2; // 2 sub-certificates
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytesLen = sizeof(SAProvisioningCertificateChain_inter_1);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytes,
+			SAProvisioningCertificateChain_inter_1,
+			sizeof(SAProvisioningCertificateChain_inter_1));
+		exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(SAProvisioningCertificateChain_inter_2);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytes,
+			SAProvisioningCertificateChain_inter_2,
+			sizeof(SAProvisioningCertificateChain_inter_2));
+
+	PRINTF(" > SAP PROV LEN: %d\r\n", strlen(SAProvisioningCertificateChain_leaf));
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytesLen = sizeof(SAProvisioningCertificateChain_leaf);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytes,
 			SAProvisioningCertificateChain_leaf,
-			sizeof(SAProvisioningCertificateChain_leaf));
+			strlen(SAProvisioningCertificateChain_leaf));
 
 	// Encrypted Contract Private Key
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
@@ -1360,15 +1380,17 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	/*************************************
 	 * CREATING V2G SIGNATURE
 	 * ***********************************/
-	struct v2gEXIFragment *auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
-    init_v2gEXIFragment(auth_fragment);
-    auth_fragment->CertificateInstallationRes_isUsed = 1u;
-	PRINTF("SIZE OF CERTIFICATE INSTALL RES: %d\r\n", sizeof(auth_fragment->CertificateInstallationRes));
-    memcpy(	&auth_fragment->CertificateInstallationRes, 
+	//struct v2gEXIFragment *auth_fragment_create = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+    /*struct v2gEXIFragment auth_fragment_create;
+
+	init_v2gEXIFragment(&auth_fragment_create);
+    auth_fragment_create.CertificateInstallationRes_isUsed = 1u;
+	PRINTF("SIZE OF CERTIFICATE INSTALL RES: %d\r\n", sizeof(auth_fragment_create.CertificateInstallationRes));
+    memcpy(	&auth_fragment_create.CertificateInstallationRes, 
 			&exiOut->V2G_Message.Body.CertificateInstallationRes, 
-			sizeof(auth_fragment->CertificateInstallationRes));
+			sizeof(auth_fragment_create.CertificateInstallationRes));
 			
-	if ((ret = create_v2g_signature(auth_fragment, 
+	if ((ret = create_v2g_signature(&auth_fragment_create, 
 									&exiOut->V2G_Message.Header.Signature,
 									&ctr_drbg)) != 0) {
 		PRINTF("[V2G] CREATING V2G ERR: %d\r\n", ret);
@@ -1376,16 +1398,11 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	else {
 		exiOut->V2G_Message.Header.Signature_isUsed = 1u;
 	}
-	vPortFree(auth_fragment);
+	//vPortFree(auth_fragment_create);*/
 
 
 	// Cleanup
 	PRINTF("Certificate Installation DONE!\r\n");
-	mbedtls_ecdh_free(&ecdh);
-	mbedtls_x509_crt_free(&crt);
-	mbedtls_ctr_drbg_free(&ctr_drbg);
-	mbedtls_entropy_free(&entropy);
-	mbedtls_ecp_keypair_free(keypair);
 
 	return;
 }
@@ -1802,7 +1819,7 @@ bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader) {
 
 void v2g_init() {
 	PRINTF("V2G_INIT\r\n");
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 4) == NULL) { // 4000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 4) == NULL) { // 7000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 

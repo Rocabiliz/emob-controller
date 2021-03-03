@@ -63,7 +63,7 @@ all: frdmk66f_lwip_httpsrv_freertos__testing_V3.axf
 frdmk66f_lwip_httpsrv_freertos__testing_V3.axf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU Linker'
-	arm-none-eabi-gcc -nostdlib -L"C:\projects\Emob-Controller\libs" -Xlinker -Map="frdmk66f_lwip_httpsrv_freertos__testing_V3.map" -Xlinker --gc-sections -Xlinker -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -T frdmk66f_lwip_httpsrv_freertos_testing_V3_Debug.ld -o "frdmk66f_lwip_httpsrv_freertos__testing_V3.axf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -nostdlib -L"C:\projects\Emob-Controller\libs" -Xlinker -Map="frdmk66f_lwip_httpsrv_freertos__testing_V3.map" -Xlinker --gc-sections -Xlinker -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -flto -O3 -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -T frdmk66f_lwip_httpsrv_freertos_testing_V3_Debug.ld -o "frdmk66f_lwip_httpsrv_freertos__testing_V3.axf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
