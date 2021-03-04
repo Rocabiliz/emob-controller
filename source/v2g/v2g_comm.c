@@ -144,9 +144,8 @@ void my_debug(void *ctx, int level, const char *file, int line, const char *str)
 
 static int tls_net_send(void *ctx, const unsigned char *buf, size_t len) {
 	err_t err;
-    
+
 	//PRINTF(">>> TLS SEND! Len = %d\r\n", len);
-    
 	if ((err = netconn_write(ctx, buf, len, NETCONN_COPY)) != 0) {
 		PRINTF("TLS_SEND Error %d\r\n", err);
 	}
@@ -336,7 +335,7 @@ int tls_handshake() {
     return mbedtls_ssl_handshake(&ssl);
 }
 
-err_t v2g_recv(struct netconn *conn, uint8_t buf[TCP_BUFF_SIZE], uint16_t *len) {
+err_t v2g_recv(struct netconn *conn, uint8_t *buf, uint16_t *len) {
     err_t err = ERR_OK;
     struct netbuf *netbuf;
     int tls_ret = 0;

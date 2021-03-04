@@ -14,7 +14,7 @@ int tls_stack_init();
 int tls_conn_init(struct netconn *conn);
 void tls_close_conn();
 int tls_handshake();
-err_t v2g_recv(struct netconn *conn, uint8_t buf[TCP_BUFF_SIZE], uint16_t *len);
-err_t v2g_send(struct netconn *conn, uint8_t buf[TCP_BUFF_SIZE], size_t len);
+err_t v2g_recv(struct netconn *conn, uint8_t *buf, uint16_t *len);
+err_t v2g_send(struct netconn *conn, uint8_t *buf, size_t len);
 
 #endif

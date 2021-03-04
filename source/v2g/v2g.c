@@ -91,7 +91,7 @@ const unsigned char SAProvisioningCertificateChain_inter_2[] = "-----BEGIN CERTI
 	"-----END CERTIFICATE-----\n"; 
 
 // moCertChain.p12 » TODO: Check if the eMAID in the OEMProvisioning certificate is 'authorized'
-const unsigned char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\n"
+const unsigned char ContractSignatureCertChain_leaf[] = "-----BEGIN CERTIFICATE-----\n"
 	"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
 	"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
 	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
@@ -102,8 +102,8 @@ const unsigned char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\
 	"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
 	"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
 	"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
-	"-----END CERTIFICATE-----\n" // contractCert leaf
-	"-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
+	"-----END CERTIFICATE-----\n"; // contractCert leaf
+const unsigned char ContractSignatureCertChain_inter_1[] = "-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
 	"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
 	"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
 	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
@@ -114,8 +114,8 @@ const unsigned char ContractSignatureCertChain[] = "-----BEGIN CERTIFICATE-----\
 	"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
 	"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
 	"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
-	"-----END CERTIFICATE-----\n"
-	"-----BEGIN CERTIFICATE-----\n"
+	"-----END CERTIFICATE-----\n";
+const unsigned char ContractSignatureCertChain_inter_2[] = "-----BEGIN CERTIFICATE-----\n"
 	"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
 	"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
 	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
@@ -507,7 +507,7 @@ static void v2g_session(void *arg) {
 					}
 
 				}
-
+				PRINTF("[V2G] StreamPos: %d\r\n", buffer_pos);
 				// Send data to the connection
 				if ((err = v2g_send(newconn, buffer, buffer_pos)) != ERR_OK) {
 					PRINTF("[V2G] TCP WRITE ERROR: %d\r\n", err);
@@ -1306,15 +1306,15 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	mbedtls_ecdh_free(&ecdh);
 
-	//PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
-	/*for (i = 0; i < dhPubkeyLen; i++) {
+	PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
+	for (i = 0; i < 10; i++) {
 		PRINTF("%02x ", dhPukeyBuf[i]);
-	} */ // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
+	} // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
 
 	// SAProvisioningCertificateChain
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 1;
-	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.charactersLen = 3;
-	memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.characters, "id1", 3);
+	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
+	//exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.charactersLen = 3;
+	//memcpy(exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id.characters, "id1", 3);
 
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates_isUsed = 1;
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.arrayLen = 2; // 2 sub-certificates
@@ -1327,11 +1327,36 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 			SAProvisioningCertificateChain_inter_2,
 			sizeof(SAProvisioningCertificateChain_inter_2));
 
-	PRINTF(" > SAP PROV LEN: %d\r\n", strlen(SAProvisioningCertificateChain_leaf));
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytesLen = sizeof(SAProvisioningCertificateChain_leaf);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytes,
 			SAProvisioningCertificateChain_leaf,
 			strlen(SAProvisioningCertificateChain_leaf));
+
+	// ContractSignatureCertChain
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id_isUsed = 1u;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id.charactersLen = 3;
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id.characters, 
+			"id1", 
+			exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id.charactersLen);
+
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates_isUsed = 1;
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.arrayLen = 2; // 2 sub-certificates
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytesLen = sizeof(ContractSignatureCertChain_inter_1);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytes,
+			ContractSignatureCertChain_inter_1,
+			sizeof(ContractSignatureCertChain_inter_1));
+		exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(ContractSignatureCertChain_inter_2);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytes,
+			ContractSignatureCertChain_inter_2,
+			sizeof(ContractSignatureCertChain_inter_2));
+
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Certificate.bytesLen = sizeof(ContractSignatureCertChain_leaf);
+	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Certificate.bytes,
+			ContractSignatureCertChain_leaf,
+			strlen(ContractSignatureCertChain_leaf));
+
+
+
 
 	// Encrypted Contract Private Key
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
@@ -1356,18 +1381,18 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_x509_crt contractCrt;
 	mbedtls_x509_crt_init(&contractCrt);
 	if ((ret = mbedtls_x509_crt_parse(	&contractCrt, 
-										(const unsigned char *)ContractSignatureCertChain, 
-										sizeof(ContractSignatureCertChain))) != 0) {
+										(const unsigned char *)ContractSignatureCertChain_leaf, 
+										sizeof(ContractSignatureCertChain_leaf))) != 0) {
 		PRINTF("CERT LOAD ERR : %d\r\n", ret);
 	}
 	
 	eMAIDLen = find_oid_value_in_name(&contractCrt.subject, "CN", eMAID, sizeof(eMAID));
-	/*if(eMAIDLen) {
+	if(eMAIDLen) {
 		PRINTF("EMAID LEN: %d\r\n", eMAIDLen);
-		PRINTF("CN: %s\n", eMAID);
+		PRINTF("CN: %s\n", eMAID); // DE-ABC-C123ABC56
 	} else {
 		PRINTF("Unable to find OID\n");
-	}*/
+	}
 	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen = 3;
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.characters, 
 			"id4", 
@@ -1819,7 +1844,7 @@ bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader) {
 
 void v2g_init() {
 	PRINTF("V2G_INIT\r\n");
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 4) == NULL) { // 7000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 7400, 4) == NULL) { // 7000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 
