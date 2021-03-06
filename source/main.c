@@ -120,6 +120,8 @@ static void cp_handler(void *pvParameters);
  * Variables
  ******************************************************************************/
 struct charge_session_t charge_session;
+
+
 static struct netif netif;
 #if defined(FSL_FEATURE_SOC_LPC_ENET_COUNT) && (FSL_FEATURE_SOC_LPC_ENET_COUNT > 0)
 static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;

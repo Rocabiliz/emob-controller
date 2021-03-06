@@ -775,7 +775,6 @@ int mbedtls_ecdsa_read_signature_restartable( mbedtls_ecdsa_context *ctx,
                                       &ctx->Q, &r, &s ) ) != 0 )
         goto cleanup;
 #else
-    PRINTF("ECSA 4\r\n");
     if( ( ret = ecdsa_verify_restartable( &ctx->grp, hash, hlen,
                               &ctx->Q, &r, &s, rs_ctx ) ) != 0 )
         goto cleanup;

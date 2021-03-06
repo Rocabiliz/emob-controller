@@ -9,6 +9,19 @@
 #include "lwip/err.h"
 #include "lwip/api.h"
 
+// TLS Certificates
+/*extern const unsigned char mbedtls_intermediate_cpo_crt[];
+extern const unsigned char mbedtls_secc_crt[];
+extern const unsigned char SAProvisioningCertificateChain_leaf[];
+extern const unsigned char SAProvisioningCertificateChain_inter_1[];
+extern const unsigned char SAProvisioningCertificateChain_inter_2[];
+extern const unsigned char ContractSignatureCertChain_leaf[];
+extern const unsigned char ContractSignatureCertChain_inter_1[];
+extern const unsigned char ContractSignatureCertChain_inter_2[];
+extern const unsigned char ContractPrivKey[];
+extern const unsigned char mbedtls_srv_privkey[];
+extern const unsigned char CACertificatesList[]; // investigate: https://github.com/ARMmbed/mbedtls/pull/2532
+*/
 void my_debug(void *ctx, int level, const char *file, int line, const char *str);
 int tls_stack_init();
 int tls_conn_init(struct netconn *conn);

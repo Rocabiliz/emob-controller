@@ -54,88 +54,92 @@
 static struct v2gEXIDocument exiIn, exiOut;
 
 const unsigned char SAProvisioningCertificateChain_leaf[] = "-----BEGIN CERTIFICATE-----\n"
-	"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
-	"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
-	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
-	"WjBQMREwDwYDVQQDDAhDUFMgTGVhZjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVj\n"
-	"dDELMAkGA1UEBhMCREUxEzARBgoJkiaJk/IsZAEZFgNDUFMwWTATBgcqhkjOPQIB\n"
-	"BggqhkjOPQMBBwNCAAS+jbjaGuLPc0P0ncG7yHHlkrZWSD+94mgw/2CkBzj59c7B\n"
-	"SbEL1O+UspEBDANNOm1VB3m/Ps5CdsOZiC6LYNbIoz8wPTAMBgNVHRMBAf8EAjAA\n"
-	"MA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUti3euQ9dIexd+M7vTz336JJEc/kw\n"
-	"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
-	"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
-	"-----END CERTIFICATE-----\n"; // CPS Leaf
+"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
+"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
+"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
+"WjBQMREwDwYDVQQDDAhDUFMgTGVhZjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVj\n"
+"dDELMAkGA1UEBhMCREUxEzARBgoJkiaJk/IsZAEZFgNDUFMwWTATBgcqhkjOPQIB\n"
+"BggqhkjOPQMBBwNCAAS+jbjaGuLPc0P0ncG7yHHlkrZWSD+94mgw/2CkBzj59c7B\n"
+"SbEL1O+UspEBDANNOm1VB3m/Ps5CdsOZiC6LYNbIoz8wPTAMBgNVHRMBAf8EAjAA\n"
+"MA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUti3euQ9dIexd+M7vTz336JJEc/kw\n"
+"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
+"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
+"-----END CERTIFICATE-----\n"; // CPS Leaf
+
 const unsigned char SAProvisioningCertificateChain_inter_1[] = "-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
-	"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
-	"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
-	"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
-	"WjBSMRMwEQYDVQQDDApQcm92U3ViQ0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9q\n"
-	"ZWN0MQswCQYDVQQGEwJERTETMBEGCgmSJomT8ixkARkWA0NQUzBZMBMGByqGSM49\n"
-	"AgEGCCqGSM49AwEHA0IABF/SaBVY/Mq+8KuJ1Qc6vY1e/OmsT4po4NDO32bEOrYc\n"
-	"/UuUh+KzpCsmO6ClJu6VJI5s/I2nyLg5k4JmzmXywYyjRTBDMBIGA1UdEwEB/wQI\n"
-	"MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS0GWz7jFQ+NKdjzO8E\n"
-	"zR4pNtb4wTAKBggqhkjOPQQDAgNHADBEAiB6LcgqAqI7QIAAO6IgUkx6RJLO14hY\n"
-	"171YzUwxlnKF4AIgGWjpCBXZjfDsq5YgEv7FoaLJ1j0bCwfRxDerELGNQ78=\n"
-	"-----END CERTIFICATE-----\n";
+"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
+"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
+"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
+"WjBSMRMwEQYDVQQDDApQcm92U3ViQ0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9q\n"
+"ZWN0MQswCQYDVQQGEwJERTETMBEGCgmSJomT8ixkARkWA0NQUzBZMBMGByqGSM49\n"
+"AgEGCCqGSM49AwEHA0IABF/SaBVY/Mq+8KuJ1Qc6vY1e/OmsT4po4NDO32bEOrYc\n"
+"/UuUh+KzpCsmO6ClJu6VJI5s/I2nyLg5k4JmzmXywYyjRTBDMBIGA1UdEwEB/wQI\n"
+"MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS0GWz7jFQ+NKdjzO8E\n"
+"zR4pNtb4wTAKBggqhkjOPQQDAgNHADBEAiB6LcgqAqI7QIAAO6IgUkx6RJLO14hY\n"
+"171YzUwxlnKF4AIgGWjpCBXZjfDsq5YgEv7FoaLJ1j0bCwfRxDerELGNQ78=\n"
+"-----END CERTIFICATE-----\n";
+
 const unsigned char SAProvisioningCertificateChain_inter_2[] = "-----BEGIN CERTIFICATE-----\n"
-	"MIIB1zCCAX6gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJVjJHUm9v\n"
-	"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
-	"CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTNaFw0yNTAyMTQyMDQyNTNa\n"
-	"MFIxEzARBgNVBAMMClByb3ZTdWJDQTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2pl\n"
-	"Y3QxCzAJBgNVBAYTAkRFMRMwEQYKCZImiZPyLGQBGRYDQ1BTMFkwEwYHKoZIzj0C\n"
-	"AQYIKoZIzj0DAQcDQgAEF2wsHo7ndfaHln2VhnKqdXA2miJrDxPF7Fey3X+d5yLM\n"
-	"KEInMO1wG7pRIvCjbkkRuHzgN3oMMm8AROjG5MnygKNFMEMwEgYDVR0TAQH/BAgw\n"
-	"BgEB/wIBATAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFC0hJa+cD7ManzY+ngR6\n"
-	"6z+HwjKyMAoGCCqGSM49BAMCA0cAMEQCIBLZFI8CBOuaktiw51cT8+CEp6W6yyuF\n"
-	"moqLhWMWgt2wAiBXbyvV0cMu/o0km0NWGCZx4aMad2gNxRjqJWSsaMzutw==\n"
-	"-----END CERTIFICATE-----\n"; 
+"MIIB1zCCAX6gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJVjJHUm9v\n"
+"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
+"CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTNaFw0yNTAyMTQyMDQyNTNa\n"
+"MFIxEzARBgNVBAMMClByb3ZTdWJDQTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2pl\n"
+"Y3QxCzAJBgNVBAYTAkRFMRMwEQYKCZImiZPyLGQBGRYDQ1BTMFkwEwYHKoZIzj0C\n"
+"AQYIKoZIzj0DAQcDQgAEF2wsHo7ndfaHln2VhnKqdXA2miJrDxPF7Fey3X+d5yLM\n"
+"KEInMO1wG7pRIvCjbkkRuHzgN3oMMm8AROjG5MnygKNFMEMwEgYDVR0TAQH/BAgw\n"
+"BgEB/wIBATAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFC0hJa+cD7ManzY+ngR6\n"
+"6z+HwjKyMAoGCCqGSM49BAMCA0cAMEQCIBLZFI8CBOuaktiw51cT8+CEp6W6yyuF\n"
+"moqLhWMWgt2wAiBXbyvV0cMu/o0km0NWGCZx4aMad2gNxRjqJWSsaMzutw==\n"
+"-----END CERTIFICATE-----\n"; 
 
 // moCertChain.p12 » TODO: Check if the eMAID in the OEMProvisioning certificate is 'authorized'
 const unsigned char ContractSignatureCertChain_leaf[] = "-----BEGIN CERTIFICATE-----\n"
-	"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
-	"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
-	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
-	"MRkwFwYDVQQDDBBERS1BQkMtQzEyM0FCQzU2MRkwFwYDVQQKDBBSSVNFIFYyRyBQ\n"
-	"cm9qZWN0MQswCQYDVQQGEwJERTESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZI\n"
-	"zj0CAQYIKoZIzj0DAQcDQgAEsWfvdDj3SVRQgr4W55oiJRX696ciIKHSz1eUDtus\n"
-	"dMPCcpxZWknPVudzTyihh4d/zjKMPMBu3Oks8vxL1sxWFqM/MD0wDAYDVR0TAQH/\n"
-	"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
-	"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
-	"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
-	"-----END CERTIFICATE-----\n"; // contractCert leaf
+"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
+"MRkwFwYDVQQDDBBERS1BQkMtQzEyM0FCQzU2MRkwFwYDVQQKDBBSSVNFIFYyRyBQ\n"
+"cm9qZWN0MQswCQYDVQQGEwJERTESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZI\n"
+"zj0CAQYIKoZIzj0DAQcDQgAEsWfvdDj3SVRQgr4W55oiJRX696ciIKHSz1eUDtus\n"
+"dMPCcpxZWknPVudzTyihh4d/zjKMPMBu3Oks8vxL1sxWFqM/MD0wDAYDVR0TAQH/\n"
+"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
+"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
+"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
+"-----END CERTIFICATE-----\n"; // contractCert leaf
+
 const unsigned char ContractSignatureCertChain_inter_1[] = "-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
-	"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
-	"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
-	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
-	"MREwDwYDVQQDDAhNT1N1YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
-	"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
-	"SM49AwEHA0IABM6DYbF6V56rtJICZW14Vk0A8NpfOuEikJJrJ6ASoYDb42NJdn0c\n"
-	"MRwGNF5lKhtfZZk/1h1/+zLJcirh9FGpz8ujRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
-	"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
-	"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
-	"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
-	"-----END CERTIFICATE-----\n";
+"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+"MREwDwYDVQQDDAhNT1N1YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+"SM49AwEHA0IABM6DYbF6V56rtJICZW14Vk0A8NpfOuEikJJrJ6ASoYDb42NJdn0c\n"
+"MRwGNF5lKhtfZZk/1h1/+zLJcirh9FGpz8ujRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
+"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
+"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
+"-----END CERTIFICATE-----\n";
+
 const unsigned char ContractSignatureCertChain_inter_2[] = "-----BEGIN CERTIFICATE-----\n"
-	"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
-	"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
-	"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
-	"MREwDwYDVQQDDAhNT1N1YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
-	"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
-	"SM49AwEHA0IABME9TAGAZhz7PGrY4s8mOFZmdk7Wb/dkuh+rq6no1xZm9Q+y832U\n"
-	"NAuAYTGGw8SELv1yIU/Hye/riQOyrfnKCH2jRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
-	"AQEwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBR57/L4BnOwi9Y2XouUItduuYUR\n"
-	"vDAKBggqhkjOPQQDAgNJADBGAiEAgIUor3jx61tB7/mI6RmHEWMSdoJbF+h6OY5c\n"
-	"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
-	"-----END CERTIFICATE-----\n";
+"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
+"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+"MREwDwYDVQQDDAhNT1N1YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+"SM49AwEHA0IABME9TAGAZhz7PGrY4s8mOFZmdk7Wb/dkuh+rq6no1xZm9Q+y832U\n"
+"NAuAYTGGw8SELv1yIU/Hye/riQOyrfnKCH2jRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+"AQEwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBR57/L4BnOwi9Y2XouUItduuYUR\n"
+"vDAKBggqhkjOPQQDAgNJADBGAiEAgIUor3jx61tB7/mI6RmHEWMSdoJbF+h6OY5c\n"
+"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
+"-----END CERTIFICATE-----\n";
 
 const unsigned char ContractPrivKey[] = "-----BEGIN EC PRIVATE KEY-----\n"
-	"Proc-Type: 4,ENCRYPTED\n"
-	"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
-	"\n"
-	"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
-	"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
-	"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
-	"-----END EC PRIVATE KEY-----\n";
+"Proc-Type: 4,ENCRYPTED\n"
+"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
+"\n"
+"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
+"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
+"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
+"-----END EC PRIVATE KEY-----\n";
 
 static void init_v2gExiDoc_response(struct v2gEXIDocument *exiDoc) {
 	init_v2gEXIDocument(exiDoc);
@@ -369,7 +373,6 @@ static void v2g_session(void *arg) {
 			if ((ret = tls_conn_init(newconn)) != ERR_OK) {
 				PRINTF("[V2G] TLS init has failed! Ret = %d\r\n", ret);
 			}
-			
 			if ((ret = tls_handshake()) != ERR_OK) {
 				PRINTF("[V2G] TLS handshake has failed! Ret = %d\r\n", ret);
 			}
@@ -507,7 +510,7 @@ static void v2g_session(void *arg) {
 					}
 
 				}
-				PRINTF("[V2G] StreamPos: %d\r\n", buffer_pos);
+
 				// Send data to the connection
 				if ((err = v2g_send(newconn, buffer, buffer_pos)) != ERR_OK) {
 					PRINTF("[V2G] TCP WRITE ERROR: %d\r\n", err);
@@ -1021,7 +1024,7 @@ void handle_payment_service_selection(struct v2gEXIDocument *exiIn, struct v2gEX
 
 // Only when 'CONTRACT' was chosen instead of 'EXTERNAL PAYMENT'
 void handle_payment_details(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut) {
-	
+	PRINTF("[V2G] PAYMENT DETAILS\r\n");
 	// Prepare response
 	init_v2gPaymentDetailsResType(&exiOut->V2G_Message.Body.PaymentDetailsRes);
 	exiOut->V2G_Message.Body.PaymentDetailsRes_isUsed = 1u;
@@ -1306,10 +1309,10 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	mbedtls_ecdh_free(&ecdh);
 
-	PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
+	/*PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
 	for (i = 0; i < 10; i++) {
 		PRINTF("%02x ", dhPukeyBuf[i]);
-	} // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
+	}*/ // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
 
 	// SAProvisioningCertificateChain
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
@@ -1321,7 +1324,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytesLen = sizeof(SAProvisioningCertificateChain_inter_1);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytes,
 			SAProvisioningCertificateChain_inter_1,
-			sizeof(SAProvisioningCertificateChain_inter_1));
+			sizeof(SAProvisioningCertificateChain_inter_1)); // MUST USE SIZEOF HERE!!!
 		exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(SAProvisioningCertificateChain_inter_2);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytes,
 			SAProvisioningCertificateChain_inter_2,
@@ -1330,7 +1333,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytesLen = sizeof(SAProvisioningCertificateChain_leaf);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Certificate.bytes,
 			SAProvisioningCertificateChain_leaf,
-			strlen(SAProvisioningCertificateChain_leaf));
+			sizeof(SAProvisioningCertificateChain_leaf));
 
 	// ContractSignatureCertChain
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Id_isUsed = 1u;
@@ -1345,7 +1348,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytes,
 			ContractSignatureCertChain_inter_1,
 			sizeof(ContractSignatureCertChain_inter_1));
-		exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(ContractSignatureCertChain_inter_2);
+	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytesLen = sizeof(ContractSignatureCertChain_inter_2);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytes,
 			ContractSignatureCertChain_inter_2,
 			sizeof(ContractSignatureCertChain_inter_2));
@@ -1353,10 +1356,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Certificate.bytesLen = sizeof(ContractSignatureCertChain_leaf);
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureCertChain.Certificate.bytes,
 			ContractSignatureCertChain_leaf,
-			strlen(ContractSignatureCertChain_leaf));
-
-
-
+			sizeof(ContractSignatureCertChain_leaf));
 
 	// Encrypted Contract Private Key
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
@@ -1387,12 +1387,12 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	
 	eMAIDLen = find_oid_value_in_name(&contractCrt.subject, "CN", eMAID, sizeof(eMAID));
-	if(eMAIDLen) {
+	/*if(eMAIDLen) {
 		PRINTF("EMAID LEN: %d\r\n", eMAIDLen);
 		PRINTF("CN: %s\n", eMAID); // DE-ABC-C123ABC56
 	} else {
 		PRINTF("Unable to find OID\n");
-	}
+	}*/
 	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen = 3;
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.characters, 
 			"id4", 
