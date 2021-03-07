@@ -33,10 +33,10 @@
 /////////////////////////
 struct mbedtls_ssl_context ssl;
 struct mbedtls_ssl_config conf;
-struct mbedtls_pk_context secc_pkey, oemprov_pkey;
+struct mbedtls_pk_context secc_pkey;
 struct mbedtls_entropy_context entropy;
 struct mbedtls_ctr_drbg_context ctr_drbg;
-struct mbedtls_x509_crt secc_crt, ca_crt, oemprov_crt;
+struct mbedtls_x509_crt secc_crt, ca_crt;
 uint8_t rx_buffer[TCP_BUFF_SIZE];
 uint16_t rx_buffer_len;
 /////////////////////////
@@ -102,7 +102,19 @@ const unsigned char CACertificatesList[] = "-----BEGIN CERTIFICATE-----\n"
 "AQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQU2gpIZDRKdPB/RqkJf5V+CaoH\n"
 "OzIwCgYIKoZIzj0EAwIDRwAwRAIgUgnArHby6n7annG7oRdfn60ZSeNnuWqn6YZf\n"
 "/O3JfJQCIEOF9tbUR7DStHGcnR1fTR2fC2gb8IkLOw/BPpn0nOfU\n"
-"-----END CERTIFICATE-----\n"; // V2G ROOT
+"-----END CERTIFICATE-----\n"// V2G Root
+"-----BEGIN CERTIFICATE-----\n"
+"MIIB1TCCAXqgAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJT0VNUm9v\n"
+"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
+"CgmSJomT8ixkARkWA09FTTAeFw0yMTAyMTUyMDQyNTJaFw0zMTAyMTMyMDQyNTJa\n"
+"MFExEjAQBgNVBAMMCU9FTVJvb3RDQTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVj\n"
+"dDELMAkGA1UEBhMCREUxEzARBgoJkiaJk/IsZAEZFgNPRU0wWTATBgcqhkjOPQIB\n"
+"BggqhkjOPQMBBwNCAAT3WE0uhVadxzo5yIKoCu99wEYxRiBt0GBav+mGVLQnEhRY\n"
+"jP910viBTHnbaWKR7bh49WWTbiZ4bfR3aaoG0q4Zo0IwQDAPBgNVHRMBAf8EBTAD\n"
+"AQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQU/zaB4uVTRNje5q2y1bHt4jXf\n"
+"W/IwCgYIKoZIzj0EAwIDSQAwRgIhAMWCJrqFeI/b0GY1VCxkxZ84vRJppJOkvB5E\n"
+"MmafzbbAAiEAmhpOjjxYPE84VfokzGoKO4qrJpRPDiKm6hqj6huB9SE=\n"
+"-----END CERTIFICATE-----\n"; // OEM ROOT
 
 const unsigned char mbedtls_srv_privkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
 "Proc-Type: 4,ENCRYPTED\n"
@@ -149,13 +161,12 @@ static int tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
     struct netbuf *temp_buf;
     int i = 0;
 
-    //PRINTF("### TLS RECEIVE! Waiting for: %d len\\r\n", len);
-    
+    //PRINTF("[TLS RX] Waiting for: %d len\r\n", len);
     // Empty rx_buffer? Receive
     if ((rx_buffer_len == 0) || (len == 0)) {
 
         netconn_recv(ctx, &temp_buf);
-        //PRINTF("TLS receive got: %d \r\n", temp_buf->p->tot_len);
+        //PRINTF("[TLS RX] receive got: %d \r\n", temp_buf->p->tot_len);
 
         // Copy to input buffer
         if (len == 0) {
@@ -170,21 +181,23 @@ static int tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
             memcpy(buf, temp_buf->p->payload, temp_buf->p->tot_len);
             result = temp_buf->p->tot_len;
         }
-
-
-        // Update rx_buffer without the requested data (shift data by _len_)
-        memcpy(rx_buffer, temp_buf->p->payload, temp_buf->p->tot_len);
-        memcpy(rx_buffer, &rx_buffer[len], temp_buf->p->tot_len - len);
-        rx_buffer_len = temp_buf->p->tot_len - len;
-        netbuf_delete(temp_buf);  
+        if ((int)((int)temp_buf->p->tot_len - (int)len) >= 0) {
+            // Update rx_buffer without the requested data (shift data by _len_)
+            memcpy(rx_buffer, temp_buf->p->payload, temp_buf->p->tot_len);
+            memcpy(rx_buffer, &rx_buffer[len], temp_buf->p->tot_len - len);
+            rx_buffer_len = temp_buf->p->tot_len - len;
+            netbuf_delete(temp_buf);  
+        }
+        else {
+            rx_buffer_len = 0;
+        }
 
     }
-
     // rx_buffer still has data from previous read call
     else {
         
         // Request of partial data from buffer
-        if (rx_buffer_len > len) {
+        if ((int)((int)rx_buffer_len - (int)len) >= 0) {
 
             // Copy to input buffer
             memcpy(buf, rx_buffer, len);
@@ -192,7 +205,8 @@ static int tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
             // Update rx_buffer without the requested data (shift data by _len_)
             memcpy(rx_buffer, &rx_buffer[len], rx_buffer_len - len);
             rx_buffer_len = rx_buffer_len - len;
-
+            
+            result = len; // use the input length as result
         }
         
         // Return remaining buffer data
@@ -204,9 +218,9 @@ static int tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
 
             // Clear rx_buffer
             rx_buffer_len = 0;
+
         }
         
-        result = len; // use the input length as result
     }
 
     return result;
@@ -225,10 +239,8 @@ int tls_stack_init() {
 	mbedtls_ctr_drbg_init(&ctr_drbg);
 	mbedtls_x509_crt_init(&secc_crt);
     mbedtls_x509_crt_init(&ca_crt);
-    mbedtls_x509_crt_init(&oemprov_crt);
 	mbedtls_ssl_config_init(&conf);
 	mbedtls_pk_init(&secc_pkey);
-	mbedtls_pk_init(&oemprov_pkey);
 
 	// RNG
 	if (( ret = mbedtls_ctr_drbg_seed(	&ctr_drbg, mbedtls_entropy_func, &entropy,
@@ -241,7 +253,7 @@ int tls_stack_init() {
         Certificates
     **********************/
 	// Client Certificate
-	if ((ret = mbedtls_x509_crt_parse(&secc_crt, (const unsigned char *)mbedtls_secc_crt, sizeof(mbedtls_secc_crt))) != 0) {
+    if ((ret = mbedtls_x509_crt_parse(&secc_crt, (const unsigned char *)mbedtls_secc_crt, sizeof(mbedtls_secc_crt))) != 0) {
 		PRINTF("TLS ERR 1 %d\r\n", ret);
         return ret;
 	}
@@ -254,7 +266,6 @@ int tls_stack_init() {
 		PRINTF("TLS ERR 1_5\r\n");
         return ret;
 	}
-
 	// Private Keys
 	if ((ret = mbedtls_pk_parse_key(&secc_pkey, (const unsigned char *)mbedtls_srv_privkey, sizeof(mbedtls_srv_privkey), (const unsigned char *)"123456", strlen("123456"))) != 0) {
 		PRINTF("TLS ERR 2: ret = %d\r\n", ret);
@@ -271,7 +282,7 @@ int tls_stack_init() {
 	}
 
 	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
-	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE); // MBEDTLS_SSL_VERIFY_NONE
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED); // MBEDTLS_SSL_VERIFY_NONE
 
 	// MBEDTLS Debugging options
 	mbedtls_ssl_conf_dbg(&conf, my_debug, NULL);
@@ -321,10 +332,13 @@ int tls_conn_init(struct netconn *conn) {
 		PRINTF( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
 		ret = ret;
 	}
-	if ((ret = mbedtls_ssl_set_hostname(&ssl, "CPO")) != 0){
+	/*if ((ret = mbedtls_ssl_set_hostname(&ssl, "RISE V2G Project")) != 0) { // DE-ABC-C123ABC56
 		PRINTF( " failed\n  ! mbedtls_ssl_set_hostname returned %d\n\n", ret );
 		ret = ret;
-	}
+	}*/
+    if ((ret =  mbedtls_ssl_get_verify_result(&ssl)) != 0) {
+        PRINTF("[TLS] SSL get verify erro: %d\r\n", ret);
+    }
 
     mbedtls_ssl_set_bio(&ssl, conn, &tls_net_send, &tls_net_rcv, NULL);
     return ret;
@@ -336,6 +350,10 @@ void tls_close_conn() {
 }
 
 int tls_handshake() {
+    int ret = mbedtls_ssl_handshake(&ssl);
+    if ((ret = mbedtls_ssl_get_verify_result(&ssl)) != 0) {
+        PRINTF("[TLS] SSL get verify error: %04x\r\n", ret);
+    }	
     return mbedtls_ssl_handshake(&ssl);
 }
 
