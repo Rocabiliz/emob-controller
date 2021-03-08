@@ -35,7 +35,7 @@
 
 /**************************** KSDK ********************************************/
 #define USE_RTOS 1
-#define FSL_RTOS_FREE_RTOS
+//#define FSL_RTOS_FREE_RTOS
 
 #include "fsl_device_registers.h"
 #include "fsl_debug_console.h"

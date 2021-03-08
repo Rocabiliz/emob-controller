@@ -41,7 +41,9 @@ uint8_t rx_buffer[TCP_BUFF_SIZE];
 uint16_t rx_buffer_len;
 /////////////////////////
 
-const unsigned char mbedtls_intermediate_cpo_crt[] = "-----BEGIN CERTIFICATE-----\n"
+// TLS Certificates
+// Not CONST as they can be updated online
+unsigned char CPO_Inter_Cert[] = "-----BEGIN CERTIFICATE-----\n"
 "MIIB1zCCAX2gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJQ1BPU3Vi\n"
 "Q0ExMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
 "CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTJaFw0yMjAyMTUyMDQyNTJa\n"
@@ -65,8 +67,9 @@ const unsigned char mbedtls_intermediate_cpo_crt[] = "-----BEGIN CERTIFICATE----
 "eJy7IBUwCgYIKoZIzj0EAwIDRwAwRAIgOx8ZSCJVCaIcN0olRFLa3wX3iO/mGThp\n"
 "vMVcAaQdudkCICdijOQfLkeet1EPW1VQhVw9xwao8KEwSqjbQnrmWwTJ\n"
 "-----END CERTIFICATE-----\n";
+size_t CPO_Inter_Cert_len = sizeof(CPO_Inter_Cert);
 
-const unsigned char mbedtls_secc_crt[] = "-----BEGIN CERTIFICATE-----\n"
+unsigned char SECC_Leaf_Cert[] = "-----BEGIN CERTIFICATE-----\n"
 "MIIB0DCCAXagAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJQ1BPU3Vi\n"
 "Q0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
 "CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTJaFw0yMTA0MTYyMDQyNTJa\n"
@@ -78,8 +81,9 @@ const unsigned char mbedtls_secc_crt[] = "-----BEGIN CERTIFICATE-----\n"
 "BggqhkjOPQQDAgNIADBFAiEA8ywemeqJW0J0Nnp0eyJBjZN3r0hxIhq72b57KPNg\n"
 "CuUCICcnJtg5rorLHu7ydMTo8EfnTFo/RS8Bg9ke9tqpKoPU\n"
 "-----END CERTIFICATE-----\n";
+size_t SECC_Leaf_Cert_len = sizeof(SECC_Leaf_Cert);
 
-const unsigned char CACertificatesList[] = "-----BEGIN CERTIFICATE-----\n" 
+unsigned char CA_Cert[] = "-----BEGIN CERTIFICATE-----\n" 
 "MIIB0TCCAXagAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
 "Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
 "CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMzEwMjEzMjA0MjUzWjBP\n"
@@ -115,8 +119,9 @@ const unsigned char CACertificatesList[] = "-----BEGIN CERTIFICATE-----\n"
 "W/IwCgYIKoZIzj0EAwIDSQAwRgIhAMWCJrqFeI/b0GY1VCxkxZ84vRJppJOkvB5E\n"
 "MmafzbbAAiEAmhpOjjxYPE84VfokzGoKO4qrJpRPDiKm6hqj6huB9SE=\n"
 "-----END CERTIFICATE-----\n"; // OEM ROOT
+size_t CA_Cert_len = sizeof(CA_Cert);
 
-const unsigned char mbedtls_srv_privkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
+unsigned char SECC_pkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
 "Proc-Type: 4,ENCRYPTED\n"
 "DEK-Info: AES-128-CBC,0DCD40131236BE920BB75E6AA2EF3D07\n"
 "\n"
@@ -124,7 +129,101 @@ const unsigned char mbedtls_srv_privkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
 "rWTfEz93JLY0Zm6TYr4l3VlLVotUuI1P6JS1WE6hMPsrbR1Tu/8wpMhQDjX8IX7j\n"
 "DwGDlb26C7QLhdZxMQwSRyQt2OQBq6YCl7eTWt8v+3I=\n"
 "-----END EC PRIVATE KEY-----\n";
+size_t SECC_pkey_len = sizeof(SECC_pkey);
 
+unsigned char CPS_Leaf_Cert[] = "-----BEGIN CERTIFICATE-----\n"
+"MIIB0jCCAXegAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
+"YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
+"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjU0WhcNMjEwNTE2MjA0MjU0\n"
+"WjBQMREwDwYDVQQDDAhDUFMgTGVhZjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVj\n"
+"dDELMAkGA1UEBhMCREUxEzARBgoJkiaJk/IsZAEZFgNDUFMwWTATBgcqhkjOPQIB\n"
+"BggqhkjOPQMBBwNCAAS+jbjaGuLPc0P0ncG7yHHlkrZWSD+94mgw/2CkBzj59c7B\n"
+"SbEL1O+UspEBDANNOm1VB3m/Ps5CdsOZiC6LYNbIoz8wPTAMBgNVHRMBAf8EAjAA\n"
+"MA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUti3euQ9dIexd+M7vTz336JJEc/kw\n"
+"CgYIKoZIzj0EAwIDSQAwRgIhAPfKyBfr1pCUO3VxZjehEEETgts4aQUoa5n/ICSs\n"
+"sLWwAiEA1QpTi+UGZexjme1Dh1PH4ST8O79sWRzDSQIQw+Ri0F8=\n"
+"-----END CERTIFICATE-----\n"; // CPS Leaf
+size_t CPS_Leaf_Cert_len = sizeof(CPS_Leaf_Cert);
+
+unsigned char CPS_Inter_1_Cert[] = "-----BEGIN CERTIFICATE-----\n" // intermediateCPSCACerts below
+"MIIB2DCCAX+gAwIBAgICMDkwCgYIKoZIzj0EAwIwUjETMBEGA1UEAwwKUHJvdlN1\n"
+"YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDELMAkGA1UEBhMCREUxEzAR\n"
+"BgoJkiaJk/IsZAEZFgNDUFMwHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUz\n"
+"WjBSMRMwEQYDVQQDDApQcm92U3ViQ0EyMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9q\n"
+"ZWN0MQswCQYDVQQGEwJERTETMBEGCgmSJomT8ixkARkWA0NQUzBZMBMGByqGSM49\n"
+"AgEGCCqGSM49AwEHA0IABF/SaBVY/Mq+8KuJ1Qc6vY1e/OmsT4po4NDO32bEOrYc\n"
+"/UuUh+KzpCsmO6ClJu6VJI5s/I2nyLg5k4JmzmXywYyjRTBDMBIGA1UdEwEB/wQI\n"
+"MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS0GWz7jFQ+NKdjzO8E\n"
+"zR4pNtb4wTAKBggqhkjOPQQDAgNHADBEAiB6LcgqAqI7QIAAO6IgUkx6RJLO14hY\n"
+"171YzUwxlnKF4AIgGWjpCBXZjfDsq5YgEv7FoaLJ1j0bCwfRxDerELGNQ78=\n"
+"-----END CERTIFICATE-----\n";
+size_t CPS_Inter_1_Cert_len = sizeof(CPS_Inter_1_Cert);
+
+unsigned char CPS_Inter_2_Cert[] = "-----BEGIN CERTIFICATE-----\n"
+"MIIB1zCCAX6gAwIBAgICMDkwCgYIKoZIzj0EAwIwUTESMBAGA1UEAwwJVjJHUm9v\n"
+"dENBMRkwFwYDVQQKDBBSSVNFIFYyRyBQcm9qZWN0MQswCQYDVQQGEwJERTETMBEG\n"
+"CgmSJomT8ixkARkWA1YyRzAeFw0yMTAyMTUyMDQyNTNaFw0yNTAyMTQyMDQyNTNa\n"
+"MFIxEzARBgNVBAMMClByb3ZTdWJDQTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2pl\n"
+"Y3QxCzAJBgNVBAYTAkRFMRMwEQYKCZImiZPyLGQBGRYDQ1BTMFkwEwYHKoZIzj0C\n"
+"AQYIKoZIzj0DAQcDQgAEF2wsHo7ndfaHln2VhnKqdXA2miJrDxPF7Fey3X+d5yLM\n"
+"KEInMO1wG7pRIvCjbkkRuHzgN3oMMm8AROjG5MnygKNFMEMwEgYDVR0TAQH/BAgw\n"
+"BgEB/wIBATAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFC0hJa+cD7ManzY+ngR6\n"
+"6z+HwjKyMAoGCCqGSM49BAMCA0cAMEQCIBLZFI8CBOuaktiw51cT8+CEp6W6yyuF\n"
+"moqLhWMWgt2wAiBXbyvV0cMu/o0km0NWGCZx4aMad2gNxRjqJWSsaMzutw==\n"
+"-----END CERTIFICATE-----\n"; 
+size_t CPS_Inter_2_Cert_len = sizeof(CPS_Inter_2_Cert);
+
+unsigned char Contract_Leaf_Cert[] = "-----BEGIN CERTIFICATE-----\n"
+"MIIB1TCCAXugAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+"QTIxGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjMwMjE1MjA0MjUzWjBX\n"
+"MRkwFwYDVQQDDBBERS1BQkMtQzEyM0FCQzU2MRkwFwYDVQQKDBBSSVNFIFYyRyBQ\n"
+"cm9qZWN0MQswCQYDVQQGEwJERTESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZI\n"
+"zj0CAQYIKoZIzj0DAQcDQgAEsWfvdDj3SVRQgr4W55oiJRX696ciIKHSz1eUDtus\n"
+"dMPCcpxZWknPVudzTyihh4d/zjKMPMBu3Oks8vxL1sxWFqM/MD0wDAYDVR0TAQH/\n"
+"BAIwADAOBgNVHQ8BAf8EBAMCA+gwHQYDVR0OBBYEFOGAeBr+Jaqn3JpTV61hCfIR\n"
+"O+cGMAoGCCqGSM49BAMCA0gAMEUCIQDI4D4x6nPkRMfdBiz569OpGGIWMYRY09+P\n"
+"O2x6e+GndwIgOASN1s501s9h0EYA64N/DBYiUu7ePyfj+2U04kFaxUo=\n"
+"-----END CERTIFICATE-----\n"; // contractCert leaf
+size_t Contract_Leaf_Cert_len = sizeof(Contract_Leaf_Cert);
+
+unsigned char Contract_Inter_1_Cert[] = "-----BEGIN CERTIFICATE-----\n" // intermediateMOCACerts
+"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9TdWJD\n"
+"QTExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+"MREwDwYDVQQDDAhNT1N1YkNBMjEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+"SM49AwEHA0IABM6DYbF6V56rtJICZW14Vk0A8NpfOuEikJJrJ6ASoYDb42NJdn0c\n"
+"MRwGNF5lKhtfZZk/1h1/+zLJcirh9FGpz8ujRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+"AQAwDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQWBBSAOO5neyOcfSgrjdxomRofc6kK\n"
+"ETAKBggqhkjOPQQDAgNJADBGAiEAxcVmvdfhSutENdwpkgwv8WAvlScXX1pmWS8X\n"
+"sbRZoAwCIQCS8umX1PyzfbzCuvIiI/4PxtByDXnuY1LSJQV2z9Dwmw==\n"
+"-----END CERTIFICATE-----\n";
+size_t Contract_Inter_1_Cert_len = sizeof(Contract_Inter_1_Cert);
+
+unsigned char Contract_Inter_2_Cert[] = "-----BEGIN CERTIFICATE-----\n"
+"MIIB1DCCAXmgAwIBAgICMDkwCgYIKoZIzj0EAwIwTzERMA8GA1UEAwwITU9Sb290\n"
+"Q0ExGTAXBgNVBAoMEFJJU0UgVjJHIFByb2plY3QxCzAJBgNVBAYTAkRFMRIwEAYK\n"
+"CZImiZPyLGQBGRYCTU8wHhcNMjEwMjE1MjA0MjUzWhcNMjUwMjE0MjA0MjUzWjBP\n"
+"MREwDwYDVQQDDAhNT1N1YkNBMTEZMBcGA1UECgwQUklTRSBWMkcgUHJvamVjdDEL\n"
+"MAkGA1UEBhMCREUxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqG\n"
+"SM49AwEHA0IABME9TAGAZhz7PGrY4s8mOFZmdk7Wb/dkuh+rq6no1xZm9Q+y832U\n"
+"NAuAYTGGw8SELv1yIU/Hye/riQOyrfnKCH2jRTBDMBIGA1UdEwEB/wQIMAYBAf8C\n"
+"AQEwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBR57/L4BnOwi9Y2XouUItduuYUR\n"
+"vDAKBggqhkjOPQQDAgNJADBGAiEAgIUor3jx61tB7/mI6RmHEWMSdoJbF+h6OY5c\n"
+"B6jX2ewCIQDQHCx9ReTzCLnl1k90MZ33yf8niZloe1mSfVW7iZZzjw==\n"
+"-----END CERTIFICATE-----\n";
+size_t Contract_Inter_2_Cert_len = sizeof(Contract_Inter_2_Cert);
+
+unsigned char Contract_pkey[] = "-----BEGIN EC PRIVATE KEY-----\n"
+"Proc-Type: 4,ENCRYPTED\n"
+"DEK-Info: AES-128-CBC,09623169DB39B356E1CB8EC5A1B6CFAB\n"
+"\n"
+"9J4mfVhaLsxOkUDenmye/gQnkdMygkQxPAUdsTjjmRYufdCemBgXw4xR6Yg1g0tc\n"
+"YxpYTqcwNCLbwtVt/LJKz9MMCtP/wKxbUchbhaBRdGnrvXvFOWHYhmDxEpMajmwb\n"
+"h487YEZMR4Zn7ljT29qalOUtopSu9Lwx3EkPv829lug=\n"
+"-----END EC PRIVATE KEY-----\n";
+size_t Contract_pkey_len = sizeof(Contract_pkey);
 
 void my_debug(void *ctx, int level, const char *file, int line, const char *str) {
 	const char *p, *basename;
@@ -159,7 +258,6 @@ static int tls_net_send(void *ctx, const unsigned char *buf, size_t len) {
 static int tls_net_rcv(void *ctx, unsigned char *buf, size_t len) {
     uint16_t result = 0;
     struct netbuf *temp_buf;
-    int i = 0;
 
     //PRINTF("[TLS RX] Waiting for: %d len\r\n", len);
     // Empty rx_buffer? Receive
@@ -230,7 +328,6 @@ int tls_stack_init() {
 	int ret;
     uint32_t flags;
 	const char *pers = "CPO";
-	const char *pass = "123456";
     struct mbedtls_x509_crt v2gsig_crt;
     struct mbedtls_ecp_keypair *keypair;
 
@@ -253,21 +350,21 @@ int tls_stack_init() {
         Certificates
     **********************/
 	// Client Certificate
-    if ((ret = mbedtls_x509_crt_parse(&secc_crt, (const unsigned char *)mbedtls_secc_crt, sizeof(mbedtls_secc_crt))) != 0) {
+    if ((ret = mbedtls_x509_crt_parse(&secc_crt, (const unsigned char *)SECC_Leaf_Cert, SECC_Leaf_Cert_len)) != 0) {
 		PRINTF("TLS ERR 1 %d\r\n", ret);
         return ret;
 	}
-	if ((ret = mbedtls_x509_crt_parse(&secc_crt, (const unsigned char *)mbedtls_intermediate_cpo_crt, sizeof(mbedtls_intermediate_cpo_crt))) != 0) {
+	if ((ret = mbedtls_x509_crt_parse(&secc_crt, (const unsigned char *)CPO_Inter_Cert, CPO_Inter_Cert_len)) != 0) {
 		PRINTF("TLS ERR 1_2\r\n");
         return ret;
 	}
 	// CA (root) certificates
-	if ((ret = mbedtls_x509_crt_parse(&ca_crt, (const unsigned char *)CACertificatesList, sizeof(CACertificatesList))) != 0) {
+	if ((ret = mbedtls_x509_crt_parse(&ca_crt, (const unsigned char *)CA_Cert, CA_Cert_len)) != 0) {
 		PRINTF("TLS ERR 1_5\r\n");
         return ret;
 	}
 	// Private Keys
-	if ((ret = mbedtls_pk_parse_key(&secc_pkey, (const unsigned char *)mbedtls_srv_privkey, sizeof(mbedtls_srv_privkey), (const unsigned char *)"123456", strlen("123456"))) != 0) {
+	if ((ret = mbedtls_pk_parse_key(&secc_pkey, (const unsigned char *)SECC_pkey, SECC_pkey_len, (const unsigned char *)"123456", strlen("123456"))) != 0) {
 		PRINTF("TLS ERR 2: ret = %d\r\n", ret);
         return ret;
 	}
@@ -302,11 +399,11 @@ int tls_stack_init() {
     }
 
     // Initialize contract structure for XML signature validation
-	/*mbedtls_x509_crt_init(&v2gsig_crt);
+	mbedtls_x509_crt_init(&v2gsig_crt);
     mbedtls_ecdsa_init(&charge_session.v2g.contract_ctx);
     if ((ret = mbedtls_x509_crt_parse(	&v2gsig_crt, 
-                                        (const unsigned char *)ContractSignatureCertChain_leaf, 
-                                        sizeof(ContractSignatureCertChain_leaf))) != 0) {
+                                        (const unsigned char *)Contract_Leaf_Cert, 
+                                        Contract_Leaf_Cert_len)) != 0) {
 		PRINTF("TLS INIT: CONTRACT CERT LOAD ERR : %d\r\n", ret);
 	}
     keypair = mbedtls_pk_ec(v2gsig_crt.pk);
@@ -314,7 +411,7 @@ int tls_stack_init() {
         PRINTF("TLS INIT: loading ecdsa from keypair err: %d\r\n", ret);
     }
     mbedtls_x509_crt_free(&v2gsig_crt); // is this ok?
-    */
+    
     PRINTF("[TLS] Init successful!\r\n");
 	return ret;
 }
@@ -332,28 +429,21 @@ int tls_conn_init(struct netconn *conn) {
 		PRINTF( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
 		ret = ret;
 	}
-	/*if ((ret = mbedtls_ssl_set_hostname(&ssl, "RISE V2G Project")) != 0) { // DE-ABC-C123ABC56
-		PRINTF( " failed\n  ! mbedtls_ssl_set_hostname returned %d\n\n", ret );
-		ret = ret;
-	}*/
-    if ((ret =  mbedtls_ssl_get_verify_result(&ssl)) != 0) {
-        PRINTF("[TLS] SSL get verify erro: %d\r\n", ret);
-    }
 
     mbedtls_ssl_set_bio(&ssl, conn, &tls_net_send, &tls_net_rcv, NULL);
     return ret;
 }
 
 void tls_close_conn() {
+    // RX buffer init
+    memset(rx_buffer, 0, sizeof(rx_buffer));
+    rx_buffer_len = 0;
+
     mbedtls_ssl_close_notify(&ssl);
     mbedtls_ssl_free(&ssl);
 }
 
 int tls_handshake() {
-    int ret = mbedtls_ssl_handshake(&ssl);
-    if ((ret = mbedtls_ssl_get_verify_result(&ssl)) != 0) {
-        PRINTF("[TLS] SSL get verify error: %04x\r\n", ret);
-    }	
     return mbedtls_ssl_handshake(&ssl);
 }
 

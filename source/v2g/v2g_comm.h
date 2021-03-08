@@ -10,18 +10,29 @@
 #include "lwip/api.h"
 
 // TLS Certificates
-/*extern const unsigned char mbedtls_intermediate_cpo_crt[];
-extern const unsigned char mbedtls_secc_crt[];
-extern const unsigned char SAProvisioningCertificateChain_leaf[];
-extern const unsigned char SAProvisioningCertificateChain_inter_1[];
-extern const unsigned char SAProvisioningCertificateChain_inter_2[];
-extern const unsigned char ContractSignatureCertChain_leaf[];
-extern const unsigned char ContractSignatureCertChain_inter_1[];
-extern const unsigned char ContractSignatureCertChain_inter_2[];
-extern const unsigned char ContractPrivKey[];
-extern const unsigned char mbedtls_srv_privkey[];
-extern const unsigned char CACertificatesList[]; // investigate: https://github.com/ARMmbed/mbedtls/pull/2532
-*/
+extern unsigned char CPO_Inter_Cert[];
+extern size_t CPO_Inter_Cert_len;
+extern unsigned char SECC_Leaf_Cert[];
+extern size_t SECC_Leaf_Cert_len;
+extern unsigned char CA_Cert[];
+extern size_t CA_Cert_len;
+extern unsigned char SECC_pkey[];
+extern size_t SECC_pkey_len;
+extern unsigned char CPS_Leaf_Cert[];
+extern size_t CPS_Leaf_Cert_len;
+extern unsigned char CPS_Inter_1_Cert[];
+extern size_t CPS_Inter_1_Cert_len;
+extern unsigned char CPS_Inter_2_Cert[];
+extern size_t CPS_Inter_2_Cert_len;
+extern unsigned char Contract_Leaf_Cert[];
+extern size_t Contract_Leaf_Cert_len;
+extern unsigned char Contract_Inter_1_Cert[];
+extern size_t Contract_Inter_1_Cert_len;
+extern unsigned char Contract_Inter_2_Cert[];
+extern size_t Contract_Inter_2_Cert_len;
+extern unsigned char Contract_pkey[];
+extern size_t Contract_pkey_len;
+
 void my_debug(void *ctx, int level, const char *file, int line, const char *str);
 int tls_stack_init();
 int tls_conn_init(struct netconn *conn);

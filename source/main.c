@@ -122,7 +122,6 @@ static void cp_handler(void *pvParameters);
 struct charge_session_t charge_session;
 
 
-static struct netif netif;
 #if defined(FSL_FEATURE_SOC_LPC_ENET_COUNT) && (FSL_FEATURE_SOC_LPC_ENET_COUNT > 0)
 static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;
 #endif /* FSL_FEATURE_SOC_LPC_ENET_COUNT */
@@ -192,18 +191,6 @@ int main(void) {
            ((u8_t *)&netif_gw)[2], ((u8_t *)&netif_gw)[3]);
     PRINTF("************************************************\r\n");
   
-    /* Launch tasks */
-    /* create server thread in RTOS */
-    /*if (sys_thread_new("main_thread", main_thread, NULL, 3000, 1) == NULL) {
-        LWIP_ASSERT("main(): Task creation failed.", 0);
-    }*/
-    //if (xTaskCreate(sdp_server, "sdp_server", configMINIMAL_STACK_SIZE + 10, NULL, SDP_SERVER_PRIORITY, NULL) != pdPASS) {
-    //	PRINTF("Task 2 creation failed!.\r\n");
-    //}
-    //if (xTaskCreate(cp_handler, "cp_gen", configMINIMAL_STACK_SIZE + 10, NULL, CP_GEN_PRIORITY, NULL) != pdPASS) {
-	//   PRINTF("Task 3 creation failed!.\r\n");
-    //}
-
     // Load EVSE Charger configuration
     load_charger_config(&netif.ip6_addr[0].u_addr.ip6.addr); // 20kb
 

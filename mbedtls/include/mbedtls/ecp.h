@@ -233,7 +233,7 @@ mbedtls_ecp_group;
  *      224       475     475     453     398     342
  *      192       640     640     633     587     476
  */
-#define MBEDTLS_ECP_WINDOW_SIZE    6   /**< The maximum window size used. */
+#define MBEDTLS_ECP_WINDOW_SIZE    2   /**< The maximum window size used. */
 #endif /* MBEDTLS_ECP_WINDOW_SIZE */
 
 #if !defined(MBEDTLS_ECP_FIXED_POINT_OPTIM)
@@ -248,7 +248,7 @@ mbedtls_ecp_group;
  *
  * Change this value to 0 to reduce peak memory usage.
  */
-#define MBEDTLS_ECP_FIXED_POINT_OPTIM  1   /**< Enable fixed-point speed-up. */
+#define MBEDTLS_ECP_FIXED_POINT_OPTIM  0   /**< Enable fixed-point speed-up. */
 #endif /* MBEDTLS_ECP_FIXED_POINT_OPTIM */
 
 /* \} name SECTION: Module settings */
