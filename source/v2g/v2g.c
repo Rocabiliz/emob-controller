@@ -963,6 +963,27 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 
 	uint16_t i;
 	int ret;
+	const char pers[] = "ecdh";
+	size_t dhPubkeyLen, eMAIDLen, secretLen, certLen;
+	unsigned char dhPukeyBuf[128];
+	unsigned char 	iv[16], 
+					contractPkeyBytes[32], 
+					privKeyBuf[48], 
+					encryptBuf[48],
+					certBuffer[256],
+					secretBuffer[512],
+					eMAID[64],
+					sessionKey[32];// 128 bits V2G-818
+	const uint8_t keyInfo[3] = {0x01, 0x55, 0x56}; // Salt - V2G-818 
+	mbedtls_md_context_t md_ctx;
+	mbedtls_ecdh_context ecdh, ctx_ev;
+	mbedtls_ctr_drbg_context ctr_drbg;
+	mbedtls_entropy_context entropy;
+	mbedtls_pk_context contractPkey;
+	mbedtls_ecp_keypair *keypair;
+	mbedtls_x509_crt oemProvCrt, contractCrt;
+	mbedtls_aes_context aes_ctx;
+
 	PRINTF("[V2G] ### Certificate Installation\r\n");
 
 	// Prepare response
@@ -978,78 +999,37 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_UnknownSession;
 	}
 
-	/*for (i = 0; i < exiIn->V2G_Message.Body.CertificateInstallationReq.Id.charactersLen; i++) {
-		PRINTF("%c", exiIn->V2G_Message.Body.CertificateInstallationReq.Id.characters[i]);
-	}
-	PRINTF("\r\n")*/;
-	/*PRINTF("[V2G] OEMPROV LEN: %d\r\n", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
-	for (i = 0; i < 20; i++) {
-		PRINTF("%02x ", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes[i]);
-	}
-	PRINTF("\r\n");*/
-	/*for (i = 0; i < exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen; i++) {
-		PRINTF("%c", exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes[i]);
-	}
-	PRINTF("\r\n");*/
-
-	// Step 1: generate DH Public Key (secp256r1 according to ISO15118-2)	
-	const char pers[] = "ecdh";
-	size_t dhPubkeyLen, eMAIDLen;
-	unsigned char dhPukeyBuf[128];
-    //unsigned char srv_to_cli[65]; // EC Public Key
-	unsigned char iv[16], contractPkeyBytes[32], privKeyBuf[48], encryptBuf[48];
-	char eMAID[64];
-
-	mbedtls_ecdh_context ecdh, ctx_ev;
-	mbedtls_ctr_drbg_context ctr_drbg;
-	mbedtls_entropy_context entropy;
-	mbedtls_pk_context contractPkey;
-	mbedtls_ecp_keypair *keypair;
-	mbedtls_x509_crt crt;
-
+	// Structure inits
 	mbedtls_ecdh_init(&ecdh);
 	mbedtls_ecdh_init(&ctx_ev);
+	mbedtls_x509_crt_init(&oemProvCrt);
+	mbedtls_entropy_init(&entropy);
+	mbedtls_ctr_drbg_init(&ctr_drbg);
+	mbedtls_ecdh_init(&ecdh);
+	mbedtls_md_init(&md_ctx); 
+	mbedtls_pk_init(&contractPkey);
+	mbedtls_aes_init(&aes_ctx);
+	mbedtls_x509_crt_init(&contractCrt);
 
 	/*****************************************
 	 * CLIENT CERTIFICATE HANDLING (EV)
 	 * ***************************************/
-	// Load client certificate (OEMProvisioning - DER encoded)
-	mbedtls_x509_crt_init(&crt);
-	unsigned char certBuffer[256];
-	uint8_t secretBuffer[512];
-	size_t secretLen, certLen = 256;
-	if ((ret = mbedtls_x509_crt_parse_der(	&crt, 
+	// Step 1: load client certificate (OEMProvisioning - DER encoded)
+	if ((ret = mbedtls_x509_crt_parse_der(	&oemProvCrt, 
 											exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes, 
 											exiIn->V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen)) != 0) {
 		PRINTF("CERT LOAD ERR : %d\r\n", ret);
 	}
-
 	// Get public key of OEMProvisioning
-	if ((ret = mbedtls_pk_write_pubkey_pem(&crt.pk, certBuffer, certLen)) != 0) {
+	if ((ret = mbedtls_pk_write_pubkey_pem(&oemProvCrt.pk, certBuffer, sizeof(certBuffer))) != 0) {
 		PRINTF("PUBKEY WRITE ERR : %d\r\n", ret);
 	}
 	certLen = strlen((char *)certBuffer);
-
-	/*PRINTF("PUBKEY LEN : %d\r\n", certLen);
-	for (i = 0; i < certLen; i++) {
-		PRINTF("%02x ", certBuffer[i]);
-	}
-	PRINTF("\r\n"); */ // OK!
-
-	keypair = mbedtls_pk_ec(crt.pk); /* quick access */
-	/*PRINTF("X:\r\n");
-	for (i = 0; i < keypair->Q.X.n; i++) {
-		PRINTF("%02x ", keypair->Q.X.p[i]);
-	}*/
 
 	/*****************************************
 	 * SERVER KEYPAIR CREATION(EVSE)
 	 * ***************************************/
 	// Step 2: create new ECDH context for server
-	mbedtls_entropy_init(&entropy);
-	mbedtls_ctr_drbg_init(&ctr_drbg);
-	mbedtls_ecdh_init(&ecdh);
-
 	if ((ret = mbedtls_ctr_drbg_seed(	&ctr_drbg, mbedtls_entropy_func, 
 										&entropy, (const unsigned char *) pers, strlen(pers))) != 0) {
 		PRINTF("EC ERR 1 : %d\r\n", ret);
@@ -1061,15 +1041,13 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
                                    		mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
 		PRINTF("EC ERR 3 : %d\r\n", ret);
 	}
-	/*if ((ret = mbedtls_mpi_write_binary(&ecdh.Q.X, srv_to_cli, sizeof(srv_to_cli))) != 0) {
-		PRINTF("EC ERR 4 : %d\r\n", ret);
-	}*/
 	if ((ret = mbedtls_mpi_lset(&ecdh.Qp.Z, 1)) != 0) {
 		PRINTF("EC ERR 5 : %d\r\n", ret);
 	}
 	
 	// Step 3: confirm that the EV public key exists in our 'server curve' (valid point)
 	// Create ECP point from EV public key
+	keypair = mbedtls_pk_ec(oemProvCrt.pk); /* quick access to public key */
 	ecdh.Qp = keypair->Q;
 	if ((ret = mbedtls_ecp_check_pubkey(&ecdh.grp, &ecdh.Qp)) != 0) {
 		PRINTF("ECP CHECK ERR : %d\r\n", ret);
@@ -1087,20 +1065,9 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 											&ctr_drbg)) != 0) {
 		PRINTF("EC ERR 8 : %d\r\n", ret);
 	}
-	/*PRINTF("Secret LEN: %d\r\n", secretLen);
-	for (i = 0; i < secretLen; i++) {
-		PRINTF("%02x ", secretBuffer[i]);
-	}*/
 
 	// Step 5: Generate shared key based on shared secret
-	uint8_t keyInfo[3] = {0x01, 0x55, 0x56}; // Salt - V2G-818 
-	unsigned char sessionKey[32]; // 128 bits V2G-818
-	mbedtls_md_context_t md_ctx;
-
-	mbedtls_md_init(&md_ctx); 
 	md_ctx.md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-	//PRINTF("MD INFO SIZE: %d\r\n", md_ctx.md_info->size);
-
 	/*
 	* THIS SHOULD BE A DIFFERENT FUNCTION (concatKDF) !!!!!!!!!!!
 	*/
@@ -1111,49 +1078,26 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 								sessionKey, sizeof(sessionKey))) != 0) {
 		PRINTF("HMAC KDF ERR: %d\r\n", ret);
 	}
-	/*for (i = 0; i < 32; i++) {
-		PRINTF("%02x ", sessionKey[i]);
-	}
-	PRINTF("\r\n");*/
 
 	// Step 6: encrypt EV private key with the computed secret key
-
-	// 1. Load ContractCertPrivKey into a context
-	// 2. Extract PrivateKey component
-	// 3. Check if 32 bytes (if 33, there is 1 byte too many MSB » remove it) TODO
-	// 4. Add the IV in the first bytes (MSB), along with the ContractPrivKey
-	// 5. Encrypt buffer composed of (IV + ContractPrivKey) » final length should be 48
-	memset(iv, 0xCC, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
-	mbedtls_pk_init(&contractPkey);
-
+	// 		6.1. Extract PrivateKey component
+	// 		6.2. Add the IV in the first bytes (MSB), along with the ContractPrivKey
+	// 		6.3. Encrypt buffer composed of (IV + ContractPrivKey) » final length should be 48
 	if ((ret = mbedtls_pk_parse_key(&contractPkey, Contract_pkey,
 									Contract_pkey_len, "123456", strlen("123456"))) != 0) {
 		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
 	}
-
 	// Get actual Private Key 
 	mbedtls_ecp_keypair *privKeyRaw = mbedtls_pk_ec(contractPkey);
 	if ((ret = mbedtls_mpi_write_binary(&privKeyRaw->d, contractPkeyBytes, sizeof(contractPkeyBytes))) != 0) {
 		PRINTF("PRIV KEY MP WRITE ERR: %d\r\n", ret);
 	}
-
 	// Compose buffer with [IV, Key]
+	memset(iv, 0xCC, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
 	memcpy(privKeyBuf, iv, sizeof(iv));
 	memcpy(&privKeyBuf[sizeof(iv)], contractPkeyBytes, sizeof(contractPkeyBytes));
-	PRINTF("CONTRACT IV LEN: %d\r\n", sizeof(iv)+sizeof(contractPkeyBytes));
-	/*for (i = 0; i < sizeof(iv)+sizeof(contractPkeyBytes); i++) {
-		if (privKeyBuf[i] == '\0') {
-			PRINTF("END OF STRING; LEN: %d\r\n", i); // This should be 32 or 33 bytes...
-			break;
-		}
-		PRINTF("%c", privKeyBuf[i]);
-	}
-	PRINTF("\r\n");*/
-
 	// Encrypt buffer
-	mbedtls_aes_context aes_ctx;
-	mbedtls_aes_init(&aes_ctx);
-	if ((ret = mbedtls_aes_setkey_enc(&aes_ctx, sessionKey, 128)) != 0) {
+	if ((ret = mbedtls_aes_setkey_enc(&aes_ctx, sessionKey, 128)) != 0) { // 128 keybits
 		PRINTF("AES SETKEY ERR: %d\r\n", ret);
 	}
 	// Encryption must be with an input buffer of %16 bytes
@@ -1162,50 +1106,49 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 										privKeyBuf, encryptBuf)) != 0) {
 		PRINTF("AES ENCRYPT ERR: %d\r\n", ret);
 	}
-	/*for (i = 0; i < sizeof(encryptBuf); i++) {
-		PRINTF("%02x ", encryptBuf[i]);
-	}
-	PRINTF("\r\n");*/
 
-	mbedtls_x509_crt_free(&crt);
+	// Free unnecessary structures from this point on
+	mbedtls_x509_crt_free(&oemProvCrt);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
+	mbedtls_aes_free(&aes_ctx);
+	mbedtls_ecdh_free(&ctx_ev);
+	mbedtls_pk_free(&contractPkey);
+	mbedtls_md_free(&md_ctx);
 
 	/*******************************
 	* Check Signature from Request 
 	********************************/
 	PRINTF("[V2G] Checking Signature..\r\n");
-	/*if (exiIn->V2G_Message.Header.Signature_isUsed) {
+	if (exiIn->V2G_Message.Header.Signature_isUsed) {
 		struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-		//struct v2gEXIFragment *auth_fragment = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
-		struct v2gEXIFragment auth_fragment;
+		//struct v2gEXIFragment auth_fragment;
 
 		mbedtls_ecdsa_context oemprov_ctx;
 		mbedtls_ecdsa_init(&oemprov_ctx);
-		init_v2gEXIFragment(&auth_fragment);
+		//init_v2gEXIFragment(&auth_fragment);
 
 		// Use provided OEMProvisioning certificate 
 		if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
 			PRINTF("ECDSA from keypair error: %d\r\n", ret);
 		}
 
-		auth_fragment.CertificateInstallationReq_isUsed = 1u;
+		/*auth_fragment.CertificateInstallationReq_isUsed = 1u;
 		memcpy(	&auth_fragment.CertificateInstallationReq, 
 				&exiIn->V2G_Message.Body.CertificateInstallationReq, 
-				sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));
+				sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));*/
 
 		if ((ret = verify_v2g_signature(sig, 
-										&auth_fragment, 
+										&exiIn, 
 										&oemprov_ctx)) != 0) {
 			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
 			//exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
 		}
-		//vPortFree(auth_fragment);
 	}
 	else {
 		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
 		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-	}*/
+	}
 	PRINTF("[V2G] Signature check performed!\r\n");
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_OK;
 
@@ -1221,11 +1164,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		PRINTF("WRITE BINARY PUB KEY ERR: %d\r\n", ret);
 	}
 	mbedtls_ecdh_free(&ecdh);
-
-	/*PRINTF("PUB KEY LEN: %d\r\n", dhPubkeyLen);
-	for (i = 0; i < 10; i++) {
-		PRINTF("%02x ", dhPukeyBuf[i]);
-	}*/ // Len should be 64+1, with 0x04 at the start meaning 'uncompressed'
 
 	// SAProvisioningCertificateChain
 	exiOut->V2G_Message.Body.CertificateInstallationRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
@@ -1293,8 +1231,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	// eMAID
 	// ContractCertificateChain, find DN of certificate
 	// TODO: remove hyphens from eMAID?
-	mbedtls_x509_crt contractCrt;
-	mbedtls_x509_crt_init(&contractCrt);
 	if ((ret = mbedtls_x509_crt_parse(	&contractCrt, 
 										(const unsigned char *)Contract_Leaf_Cert,
 										Contract_Leaf_Cert_len)) != 0) {
@@ -1302,12 +1238,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	
 	eMAIDLen = find_oid_value_in_name(&contractCrt.subject, "CN", eMAID, sizeof(eMAID));
-	/*if(eMAIDLen) {
-		PRINTF("EMAID LEN: %d\r\n", eMAIDLen);
-		PRINTF("CN: %s\n", eMAID); // DE-ABC-C123ABC56
-	} else {
-		PRINTF("Unable to find OID\n");
-	}*/
 	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen = 3;
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.characters, 
 			"id4", 
@@ -1316,6 +1246,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.CONTENT.characters,
 			eMAID,
 			eMAIDLen);
+	mbedtls_x509_crt_free(&contractCrt);
 
 	/*************************************
 	 * CREATING V2G SIGNATURE
@@ -1340,7 +1271,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 	//vPortFree(auth_fragment_create);*/
 
-	// Cleanup
 	PRINTF("Certificate Installation DONE!\r\n");
 
 	return;
