@@ -31,14 +31,14 @@
 #define DEBUG_LEVEL 1
 
 /////////////////////////
-struct mbedtls_ssl_context ssl;
-struct mbedtls_ssl_config conf;
-struct mbedtls_pk_context secc_pkey;
-struct mbedtls_entropy_context entropy;
-struct mbedtls_ctr_drbg_context ctr_drbg;
-struct mbedtls_x509_crt secc_crt, ca_crt;
-uint8_t rx_buffer[TCP_BUFF_SIZE];
-uint16_t rx_buffer_len;
+static struct mbedtls_ssl_context ssl;
+static struct mbedtls_ssl_config conf;
+static struct mbedtls_pk_context secc_pkey;
+static struct mbedtls_entropy_context entropy;
+static struct mbedtls_ctr_drbg_context ctr_drbg;
+static struct mbedtls_x509_crt secc_crt, ca_crt;
+static uint8_t rx_buffer[TCP_BUFF_SIZE];
+static uint16_t rx_buffer_len;
 /////////////////////////
 
 // TLS Certificates
@@ -338,6 +338,7 @@ int tls_stack_init() {
     mbedtls_x509_crt_init(&ca_crt);
 	mbedtls_ssl_config_init(&conf);
 	mbedtls_pk_init(&secc_pkey);
+    mbedtls_ssl_init(&ssl);
 
 	// RNG
 	if (( ret = mbedtls_ctr_drbg_seed(	&ctr_drbg, mbedtls_entropy_func, &entropy,
@@ -418,19 +419,19 @@ int tls_stack_init() {
 
 int tls_conn_init(struct netconn *conn) {
     int ret = ERR_OK;
-    mbedtls_ssl_init(&ssl);
 
     // RX buffer init
     memset(rx_buffer, 0, sizeof(rx_buffer));
     rx_buffer_len = 0;
 
-    // Post-init operations
-	if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0) {
+    // Post-init configurations
+    if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0) {
 		PRINTF( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
 		ret = ret;
 	}
-
     mbedtls_ssl_set_bio(&ssl, conn, &tls_net_send, &tls_net_rcv, NULL);
+    mbedtls_ssl_conf_read_timeout(&ssl, (uint32_t)TLS_TIMEOUT_MS);
+
     return ret;
 }
 

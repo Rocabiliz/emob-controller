@@ -9,6 +9,8 @@
 #include "lwip/err.h"
 #include "lwip/api.h"
 
+#define TLS_TIMEOUT_MS 10000
+
 // TLS Certificates
 extern unsigned char CPO_Inter_Cert[];
 extern size_t CPO_Inter_Cert_len;

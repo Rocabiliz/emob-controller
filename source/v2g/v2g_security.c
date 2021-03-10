@@ -62,13 +62,11 @@ size_t find_oid_value_in_name(const mbedtls_x509_name *name, const char* target_
     return retval;
 }
 
-int verify_v2g_signature(   struct v2gSignatureType *sig, 
-                            struct v2gEXIFragment *auth_fragment,
+int verify_v2g_signature(   struct v2gEXIDocument *exiDoc,
                             mbedtls_ecdsa_context *ctx) {
-    //struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
+
     unsigned char buf[1024];
     uint16_t buffer_pos = 0;
-    struct v2gReferenceType *req_ref = &sig->SignedInfo.Reference.array[0];
     bitstream_t stream = {
         .size = 1024,
         .data = buf,
@@ -78,12 +76,28 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
     };
     uint8_t digest[32];
     int err;
+    struct v2gEXIFragment exiFrag;
+    struct v2gSignatureType *sig = &exiDoc->V2G_Message.Header.Signature;
+    struct v2gReferenceType *req_ref = &sig->SignedInfo.Reference.array[0];
+    struct xmldsigEXIFragment sig_fragment;
 
     PRINTF("Verifying V2G Signature...\r\n");
 
+    init_v2gEXIFragment(&exiFrag);
+    init_xmldsigEXIFragment(&sig_fragment);
+
+    // Decode possible exiDoc messages' signatures
+    if (exiDoc->V2G_Message.Body.CertificateInstallationReq_isUsed) {
+        exiFrag.CertificateInstallationReq_isUsed = 1;
+        memcpy(	&exiFrag.CertificateInstallationReq,
+				&exiDoc->V2G_Message.Body.CertificateInstallationReq, 
+				sizeof(exiDoc->V2G_Message.Body.CertificateInstallationReq));
+    }
+    // else..
+
     // Part 1 - Digest (hash)
-    if ((err = encode_v2gExiFragment(&stream, auth_fragment)) != 0) {
-        PRINTF("handle_authorization: unable to encode auth fragment\n");
+    if ((err = encode_v2gExiFragment(&stream, &exiFrag)) != 0) {
+        PRINTF("[V2G Sig] unable to encode auth fragment\n");
         return 1;
     }
     mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
@@ -91,14 +105,12 @@ int verify_v2g_signature(   struct v2gSignatureType *sig,
     PRINTF("Digest len: %d\r\n", req_ref->DigestValue.bytesLen);
     if (req_ref->DigestValue.bytesLen != 32 || 
         memcmp(req_ref->DigestValue.bytes, digest, 32) != 0) {
-        PRINTF("handle_authorization: invalid digest\n");
+        PRINTF("[V2G Sig] invalid digest\n");
         return 2;
     }
 
     // Part 2 - Content (xml signature + encryption)
     PRINTF("V2G SIG PART2\r\n");
-    struct xmldsigEXIFragment sig_fragment;
-    init_xmldsigEXIFragment(&sig_fragment);
     sig_fragment.SignedInfo_isUsed = 1;
     memcpy( &sig_fragment.SignedInfo, 
             &sig->SignedInfo,
@@ -155,7 +167,7 @@ sign_auth_request(req, &s->contract.key,
                         &s->contract.ctr_drbg,
                         &exiIn.V2G_Message.Header.Signature);
 */
-int create_v2g_signature(struct v2gEXIFragment *auth_fragment, struct v2gSignatureType *sig, mbedtls_ctr_drbg_context *ctr_drbg) {
+int create_v2g_signature(struct v2gEXIFragment *exiFrag, struct v2gSignatureType *sig, mbedtls_ctr_drbg_context *ctr_drbg) {
     
     int err;
     struct xmldsigEXIFragment sig_fragment;
@@ -176,7 +188,7 @@ int create_v2g_signature(struct v2gEXIFragment *auth_fragment, struct v2gSignatu
         .capacity = 8, // Set to 8 for send and 0 for recv
     };
 
-    if ((err = encode_v2gExiFragment(&stream, auth_fragment)) != 0) {
+    if ((err = encode_v2gExiFragment(&stream, exiFrag)) != 0) {
         printf("error 1: error code = %d\n", err);
         return -1;
     }

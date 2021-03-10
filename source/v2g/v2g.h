@@ -72,5 +72,6 @@ void handle_current_demand(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 void handle_welding_detection(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_charging_status(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_session_stop(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
+int secc_discovery_protocol(void* arg);
 
 #endif

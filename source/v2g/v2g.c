@@ -88,16 +88,15 @@ static int deserializeStream2EXI(bitstream_t *streamIn, struct v2gEXIDocument *e
 	return errn;
 }
 
-static void secc_discovery_protocol(void* arg) {
+int secc_discovery_protocol(void* arg) {
     struct netconn *sdp_conn;
 	struct netbuf *udp_buf;
 	err_t err;
+	int ret = 0;
     struct sdp_req_t *sdp_req;
     struct sdp_res_t sdp_res;
 
 	LWIP_UNUSED_ARG(arg);
-	//configSTACK_DEPTH_TYPE sdp_stack_depth = uxTaskGetStackHighWaterMark2(NULL);
-	//PRINTF("SDP STACK INIT: %d\r\n", sdp_stack_depth);
 	PRINTF("*****************************\r\n");
 	PRINTF("SDP - SECC Discovery Protocol\r\n");
 	PRINTF("*****************************\r\n");
@@ -105,109 +104,115 @@ static void secc_discovery_protocol(void* arg) {
      * SDP - SECC DISCOVERY PROTOCOL
      * **********************************/
 	// Prepare UDP/IPv6 connection
+	/*
+	// Do not restart SDP server while V2G session is active
+	if (charge_session.v2g.session_active) {
+		continue;
+	}*/
+	
+	PRINTF("[SDP] Creating SDP/UDP socket...\r\n");
+	sdp_conn = (struct netconn*)netconn_new(NETCONN_UDP_IPV6);
+	if ((err = netconn_bind(sdp_conn, IP6_ADDR_ANY, V2G_SDP_SERVER_PORT)) != ERR_OK) { // port: 15118
+		PRINTF("[SDP] SDP/UDP bind error: %err\r\n", err);
+	}
+	
+	// Wait for SDP Request
 	while (1) {
+		PRINTF("[SDP] Waiting to receive UDP...\r\n");
 
-		// Do not restart SDP server while V2G session is active
-		if (charge_session.v2g.session_active) {
-			continue;
-		}
-		
-		PRINTF("[SDP] Creating SDP/UDP socket...\r\n");
-		sdp_conn = (struct netconn*)netconn_new(NETCONN_UDP_IPV6);
-		if ((err = netconn_bind(sdp_conn, IP6_ADDR_ANY, V2G_SDP_SERVER_PORT)) != ERR_OK) { // port: 15118
-			PRINTF("[SDP] SDP/UDP bind error: %err\r\n", err);
-		}
-		
-		// Wait for SDP_Req
-		while (1) {
-			PRINTF("[SDP] Waiting to receive UDP...\r\n");
-			err = netconn_recv(sdp_conn, &udp_buf);
+		// Parse received message
+		if ((err = netconn_recv(sdp_conn, &udp_buf)) == ERR_OK) {
 			PRINTF("[SDP] Received SDP!\r\n");
+			sdp_req = udp_buf->p->payload;
 
-			// Parse received message
-			if (err == ERR_OK) {
-				sdp_req = udp_buf->p->payload;
-
-				if (sdp_req->v2g_header.v2g_proto_version != V2G_HEADER_PROTO) {
-					PRINTF("[SDP] ERR: SDP REQ V2G Protocol version\r\n");
-					continue;
-				}
-				else if (sdp_req->v2g_header.inverse_v2g_proto_version != (0xFF - sdp_req->v2g_header.v2g_proto_version)) {
-					PRINTF("[SDP] ERR: SDP REQ V2G Inverse Protocol version\r\n");
-					continue;
-				}
-				else if ((	(uint16_t)(sdp_req->v2g_header.payload_type[0] << 8) | 
-							(uint16_t)(sdp_req->v2g_header.payload_type[1])) != SDP_REQ_PAYLOAD_TYPE) {
-					PRINTF("[SDP] ERR: SDP REQ Payload Type: %u:%u\r\n", sdp_req->v2g_header.payload_type[0], sdp_req->v2g_header.payload_type[1]);
-					continue;
-				}
-				else if (	((uint32_t)(sdp_req->v2g_header.payload_length[0] << 24) |
-							(uint32_t)(sdp_req->v2g_header.payload_length[1] << 16) |
-							(uint32_t)(sdp_req->v2g_header.payload_length[2] << 8) |
-							(uint32_t)(sdp_req->v2g_header.payload_length[3])) != 
-							(uint32_t)(sizeof(struct sdp_req_t) - sizeof(struct v2g_header_t))) {
-					PRINTF("[SDP] ERR: SDP REQ Payload Length\r\n");
-					continue;
-				}
-
-				// Save EV IPv6 ADDR
-				memcpy(charge_session.v2g.ev_ip_addr, udp_buf->addr.u_addr.ip6.addr, sizeof(udp_buf->addr.u_addr.ip6.addr));
-
-				// SDP Response Header
-				sdp_res.v2g_header.v2g_proto_version = V2G_HEADER_PROTO;
-				sdp_res.v2g_header.inverse_v2g_proto_version = (0xFF - V2G_HEADER_PROTO);
-				sdp_res.v2g_header.payload_type[0] = (uint8_t)(SDP_RES_PAYLOAD_TYPE >> 8);
-				sdp_res.v2g_header.payload_type[1] = (uint8_t)SDP_RES_PAYLOAD_TYPE;
-				sdp_res.v2g_header.payload_length[0] = (uint8_t)((uint32_t)(sizeof(struct sdp_res_t) - sizeof(struct v2g_header_t)) >> 24);
-				sdp_res.v2g_header.payload_length[1] = (uint8_t)((uint32_t)(sizeof(struct sdp_res_t) - sizeof(struct v2g_header_t)) >> 16);
-				sdp_res.v2g_header.payload_length[2] = (uint8_t)((uint32_t)(sizeof(struct sdp_res_t) - sizeof(struct v2g_header_t)) >> 8);
-				sdp_res.v2g_header.payload_length[3] = (uint8_t)(sizeof(struct sdp_res_t) - sizeof(struct v2g_header_t));
-
-				// SDP Response Body
-				memcpy(sdp_res.secc_ip_addr, charge_session.charger.secc_ip_addr, 16);
-				sdp_res.secc_port[0] = (uint8_t)(charge_session.charger.secc_v2g_port >> 8);
-				sdp_res.secc_port[1] = (uint8_t)(charge_session.charger.secc_v2g_port);
-
-				// TLS requested from EV?
-				if (sdp_req->security == 0x00) {
-					sdp_res.security = 0x00;
-					charge_session.v2g.tls = true;
-				}
-				else {
-					sdp_res.security = 0x10;
-					charge_session.v2g.tls = false;
-				}
-				sdp_res.transport_proto = 0x00;
-
-				// Prepare buffer to send
-				PRINTF("[SDP] Sending SDP response..\r\n");
-				netbuf_ref(udp_buf, &sdp_res, sizeof(struct sdp_res_t));
-
-				if ((err = netconn_send(sdp_conn, udp_buf)) != ERR_OK) {
-					PRINTF("[SDP] ERR: could not send SDP_Res: %d\r\n", err);
-					return;
-				}
-
-				netbuf_delete(udp_buf);
-				netconn_close(sdp_conn);
-				netconn_delete(sdp_conn);
-
-				charge_session.v2g.session_active = true; // engage V2G/TCP-IPv6
-				PRINTF("[SDP] SDP DONE!\r\n");
-				break;
+			if (sdp_req->v2g_header.v2g_proto_version != V2G_HEADER_PROTO) {
+				PRINTF("[SDP] ERR: SDP REQ V2G Protocol version\r\n");
+				continue;
+			}
+			else if (	sdp_req->v2g_header.inverse_v2g_proto_version != 
+						(0xFF - sdp_req->v2g_header.v2g_proto_version)) {
+				PRINTF("[SDP] ERR: SDP REQ V2G Inverse Protocol version\r\n");
+				continue;
+			}
+			else if ((	(uint16_t)(sdp_req->v2g_header.payload_type[0] << 8) | 
+						(uint16_t)(sdp_req->v2g_header.payload_type[1])) != SDP_REQ_PAYLOAD_TYPE) {
+				PRINTF("[SDP] ERR: SDP REQ Payload Type: %u:%u\r\n", sdp_req->v2g_header.payload_type[0], sdp_req->v2g_header.payload_type[1]);
+				continue;
+			}
+			else if (	((uint32_t)(sdp_req->v2g_header.payload_length[0] << 24) |
+						(uint32_t)(sdp_req->v2g_header.payload_length[1] << 16) |
+						(uint32_t)(sdp_req->v2g_header.payload_length[2] << 8) |
+						(uint32_t)(sdp_req->v2g_header.payload_length[3])) != 
+						(uint32_t)(sizeof(struct sdp_req_t) - sizeof(struct v2g_header_t))) {
+				PRINTF("[SDP] ERR: SDP REQ Payload Length\r\n");
+				continue;
 			}
 
-		} 
-		break; 
-	}
+			// Save EV IPv6 ADDR
+			memcpy(	charge_session.v2g.ev_ip_addr, 
+					udp_buf->addr.u_addr.ip6.addr, 
+					sizeof(udp_buf->addr.u_addr.ip6.addr));
+
+			// SDP Response Header
+			sdp_res.v2g_header.v2g_proto_version = V2G_HEADER_PROTO;
+			sdp_res.v2g_header.inverse_v2g_proto_version = (0xFF - V2G_HEADER_PROTO);
+			sdp_res.v2g_header.payload_type[0] = (uint8_t)(SDP_RES_PAYLOAD_TYPE >> 8);
+			sdp_res.v2g_header.payload_type[1] = (uint8_t)SDP_RES_PAYLOAD_TYPE;
+			sdp_res.v2g_header.payload_length[0] = (uint8_t)((uint32_t)(sizeof(struct sdp_res_t) - 
+																		sizeof(struct v2g_header_t)) >> 24);
+			sdp_res.v2g_header.payload_length[1] = (uint8_t)((uint32_t)(sizeof(struct sdp_res_t) - 
+																		sizeof(struct v2g_header_t)) >> 16);
+			sdp_res.v2g_header.payload_length[2] = (uint8_t)((uint32_t)(sizeof(struct sdp_res_t) - 
+																		sizeof(struct v2g_header_t)) >> 8);
+			sdp_res.v2g_header.payload_length[3] = (uint8_t)(sizeof(struct sdp_res_t) - sizeof(struct v2g_header_t));
+
+			// SDP Response Body
+			memcpy(sdp_res.secc_ip_addr, charge_session.charger.secc_ip_addr, 16);
+			sdp_res.secc_port[0] = (uint8_t)(charge_session.charger.secc_v2g_port >> 8);
+			sdp_res.secc_port[1] = (uint8_t)(charge_session.charger.secc_v2g_port);
+
+			// TLS requested from EV?
+			if (sdp_req->security == 0x00) {
+				sdp_res.security = 0x00;
+				charge_session.v2g.tls = true;
+			}
+			else {
+				sdp_res.security = 0x10;
+				charge_session.v2g.tls = false;
+			}
+			sdp_res.transport_proto = 0x00;
+
+			// Prepare buffer to send
+			PRINTF("[SDP] Sending SDP response..\r\n");
+			netbuf_ref(udp_buf, &sdp_res, sizeof(struct sdp_res_t));
+
+			if ((err = netconn_send(sdp_conn, udp_buf)) != ERR_OK) {
+				PRINTF("[SDP] ERR: could not send SDP_Res: %d\r\n", err);
+				ret = 1;
+			}
+
+			// Cleanup
+			netbuf_delete(udp_buf);
+			netconn_close(sdp_conn);
+			netconn_delete(sdp_conn);
+
+			charge_session.v2g.session_active = true; // engage V2G/TCP-IPv6
+			PRINTF("[SDP] SDP DONE!\r\n");
+			break;
+		}
+		else {
+			PRINTF("[SDP] Error receiving message: %d\r\n", err);
+			charge_session.v2g.session_active = false;
+			ret = 2;
+		}
+	} 
 
 	PRINTF("[SDP] Breaking SDP\r\n");
-	//sdp_stack_depth = uxTaskGetStackHighWaterMark2(NULL);
-	//PRINTF("[SDP] STACK END: %d\r\n", sdp_stack_depth);
-	vTaskDelete(NULL);
+	//vTaskDelete(NULL);
+	return ret;
 }
 
-static void v2g_session(void *arg) {
+void v2g_session(void *arg) {
 
   	LWIP_UNUSED_ARG(arg);
 
@@ -249,9 +254,6 @@ static void v2g_session(void *arg) {
 		PRINTF("[V2G] TCP Conn bind error\r\n");
 	}
 
-	// Init TLS stack
-	tls_stack_init();
-
 	// Tell connection to go into listening mode.
 	if ((err = netconn_listen(conn)) != ERR_OK) {
 		PRINTF("[V2G] TCP Conn listen error\r\n");
@@ -263,7 +265,10 @@ static void v2g_session(void *arg) {
 		PRINTF("[V2G] Starting V2G cycle\r\n");
 
 		// Engage SDP (non-blocking)
-		sdp_init();
+		//sdp_init();
+		if ((ret = secc_discovery_protocol(NULL)) != 0) {
+			continue;
+		}
 
 		// Grab new TCP connection (blocking until SDP is over and new TCP connection is requested)
 		if ((err = netconn_accept(conn, &newconn)) == ERR_OK) {
@@ -1122,28 +1127,20 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	PRINTF("[V2G] Checking Signature..\r\n");
 	if (exiIn->V2G_Message.Header.Signature_isUsed) {
 		struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-		//struct v2gEXIFragment auth_fragment;
 
 		mbedtls_ecdsa_context oemprov_ctx;
 		mbedtls_ecdsa_init(&oemprov_ctx);
-		//init_v2gEXIFragment(&auth_fragment);
 
 		// Use provided OEMProvisioning certificate 
 		if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
 			PRINTF("ECDSA from keypair error: %d\r\n", ret);
 		}
 
-		/*auth_fragment.CertificateInstallationReq_isUsed = 1u;
-		memcpy(	&auth_fragment.CertificateInstallationReq, 
-				&exiIn->V2G_Message.Body.CertificateInstallationReq, 
-				sizeof(exiIn->V2G_Message.Body.CertificateInstallationReq));*/
-
-		if ((ret = verify_v2g_signature(sig, 
-										&exiIn, 
-										&oemprov_ctx)) != 0) {
+		if ((ret = verify_v2g_signature(&exiIn, &oemprov_ctx)) != 0) {
 			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
-			//exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+			exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
 		}
+		mbedtls_ecdsa_free(&oemprov_ctx);
 	}
 	else {
 		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
@@ -1152,7 +1149,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	PRINTF("[V2G] Signature check performed!\r\n");
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_OK;
 
-	mbedtls_ecp_keypair_free(keypair);
+	//mbedtls_ecp_keypair_free(keypair);
 
 	/*************************************
 	 * WRITE TO OUTPUT STRUCTURE
@@ -1689,7 +1686,14 @@ bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader) {
 
 void v2g_init() {
 	PRINTF("V2G_INIT\r\n");
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 7400, 4) == NULL) { // 7000
+	int err = 0;
+	// TLS Stack Init
+	if ((err = tls_stack_init()) != 0) {
+		PRINTF("[V2G] TLS Init error: %d\r\n", err);
+	}    
+
+	// V2G Thread
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 8500, 4) == NULL) { // 7000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 
@@ -1700,6 +1704,8 @@ void v2g_init() {
 
 void sdp_init() {
 	PRINTF("SDP_INIT\r\n");
+	
+	// SDP Thread
 	if (sys_thread_new("sdp_session", secc_discovery_protocol, NULL, 300, 2) == NULL) {
 		PRINTF("SDP thread failed\r\n");
 	}
