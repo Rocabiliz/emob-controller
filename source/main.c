@@ -192,10 +192,9 @@ int main(void) {
     PRINTF("************************************************\r\n");
   
     // Load EVSE Charger configuration
-    err_t err;
     load_charger_config(&netif.ip6_addr[0].u_addr.ip6.addr); // 20kb
 
-    webserver_init(); // will only work with 222E0 HEAP size (140KB)~
+    //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
     v2g_init();
     
     /* run RTOS */

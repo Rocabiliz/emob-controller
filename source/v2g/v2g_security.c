@@ -88,25 +88,39 @@ int verify_v2g_signature(   struct v2gEXIDocument *exiDoc,
 
     // Decode possible exiDoc messages' signatures
     if (exiDoc->V2G_Message.Body.CertificateInstallationReq_isUsed) {
+        PRINTF("[V2G Sig] Copying CertificateInstallationReq: %d\r\n",
+                sizeof(exiDoc->V2G_Message.Body.CertificateInstallationReq));
         exiFrag.CertificateInstallationReq_isUsed = 1;
         memcpy(	&exiFrag.CertificateInstallationReq,
 				&exiDoc->V2G_Message.Body.CertificateInstallationReq, 
-				sizeof(exiDoc->V2G_Message.Body.CertificateInstallationReq));
-    }
-    // else..
+				sizeof(exiFrag.CertificateInstallationReq));
 
+    }
+    else if (exiDoc->V2G_Message.Body.AuthorizationReq_isUsed) {
+        PRINTF("[V2G Sig] Copying AuthorizationReq: %d\r\n",
+                sizeof(exiDoc->V2G_Message.Body.AuthorizationReq));
+        exiFrag.AuthorizationReq_isUsed = 1;
+        memcpy(	&exiFrag.AuthorizationReq,
+				&exiDoc->V2G_Message.Body.AuthorizationReq, 
+				sizeof(exiFrag.AuthorizationReq));
+
+    }
     // Part 1 - Digest (hash)
+    PRINTF("V2G SIG PART 1.1\r\n");
     if ((err = encode_v2gExiFragment(&stream, &exiFrag)) != 0) {
         PRINTF("[V2G Sig] unable to encode auth fragment\n");
         return 1;
     }
-    mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
-    PRINTF("Signature bufferpos: %d\r\n", buffer_pos);
+    PRINTF("V2G SIG PART 1.2: %d\r\n", buffer_pos);
+    if ((err = mbedtls_sha256_ret(buf, (size_t)buffer_pos, digest, 0)) != 0) {
+        PRINTF("[V2G Sig] sha256 error\r\n");
+        return 2;
+    }
     PRINTF("Digest len: %d\r\n", req_ref->DigestValue.bytesLen);
     if (req_ref->DigestValue.bytesLen != 32 || 
         memcmp(req_ref->DigestValue.bytes, digest, 32) != 0) {
-        PRINTF("[V2G Sig] invalid digest\n");
-        return 2;
+        PRINTF("[V2G Sig] invalid digest\\rn");
+        return 3;
     }
 
     // Part 2 - Content (xml signature + encryption)
@@ -115,18 +129,22 @@ int verify_v2g_signature(   struct v2gEXIDocument *exiDoc,
     memcpy( &sig_fragment.SignedInfo, 
             &sig->SignedInfo,
             sizeof(sig_fragment.SignedInfo));
+    PRINTF("V2G SIG PART 2.1\r\n");
     buffer_pos = 0;
     err = encode_xmldsigExiFragment(&stream, &sig_fragment);
     if (err != 0) {
         printf("error 2: error code = %d\n", err);
-        return 3;
+        return 4;
     }
 
-    //mbedtls_sha256(buf, (size_t)buffer_pos, digest, 0);
+    if ((err = mbedtls_sha256_ret(buf, (size_t)buffer_pos, digest, 0)) != 0) {
+        PRINTF("[V2G Sig] sha256 error\r\n");
+        return 5;
+    }
     PRINTF("Signature bufferpos 2: %d\r\n", buffer_pos);
     if (sig->SignatureValue.CONTENT.bytesLen > 350) {
         printf("handle_authorization: signature too long\n");
-        return 4;
+        return 6;
     }
 
     // Use provided context or 'Contract' context saved in charge_session struct
@@ -138,11 +156,6 @@ int verify_v2g_signature(   struct v2gEXIDocument *exiDoc,
     }
     else {
         PRINTF("USING GIVEN Context...\r\n");
-        /*PRINTF("Signature BytesLen: %d\r\n", sig->SignatureValue.CONTENT.bytesLen);
-        for (int i = 0; i < sig->SignatureValue.CONTENT.bytesLen; i++) {
-            PRINTF("%02x ", sig->SignatureValue.CONTENT.bytes[i]);
-        }
-        PRINTF("\r\n");*/
         err = mbedtls_ecdsa_read_signature( ctx,
                                             digest, 32,
                                             sig->SignatureValue.CONTENT.bytes,
@@ -151,18 +164,13 @@ int verify_v2g_signature(   struct v2gEXIDocument *exiDoc,
 
     if (err != 0) {
         printf("invalid signature :%d\r\n", err);
-        return 5;
+        return 7;
     }
 
     return 0;
 }
 
 /*
-sign_auth_request(struct v2gAuthorizationReqType *req,
-                      ecdsa_context *key,
-                      ctr_drbg_context *ctr_drbg,
-                      struct v2gSignatureType *sig)
-
 sign_auth_request(req, &s->contract.key,
                         &s->contract.ctr_drbg,
                         &exiIn.V2G_Message.Header.Signature);

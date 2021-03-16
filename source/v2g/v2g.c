@@ -88,7 +88,7 @@ static int deserializeStream2EXI(bitstream_t *streamIn, struct v2gEXIDocument *e
 	return errn;
 }
 
-int secc_discovery_protocol(void* arg) {
+static int secc_discovery_protocol(void* arg) {
     struct netconn *sdp_conn;
 	struct netbuf *udp_buf;
 	err_t err;
@@ -212,7 +212,7 @@ int secc_discovery_protocol(void* arg) {
 	return ret;
 }
 
-void v2g_session(void *arg) {
+static void v2g_session(void *arg) {
 
   	LWIP_UNUSED_ARG(arg);
 
@@ -366,6 +366,11 @@ void v2g_session(void *arg) {
 						memset(&charge_session.v2g.stateFlow, 0, sizeof(charge_session.v2g.stateFlow));
 						charge_session.v2g.stateFlow.certificateInstallation_ok = 1;
 					}
+					else if (exiIn.V2G_Message.Body.CertificateUpdateReq_isUsed) {
+						handle_certificate_update(&exiIn, &exiOut);
+						memset(&charge_session.v2g.stateFlow, 0, sizeof(charge_session.v2g.stateFlow));
+						charge_session.v2g.stateFlow.certificateUpdate_ok = 1;
+					}
 					else if (exiIn.V2G_Message.Body.AuthorizationReq_isUsed) {
 						handle_authorization(&exiIn, &exiOut);
 						memset(&charge_session.v2g.stateFlow, 0, sizeof(charge_session.v2g.stateFlow));
@@ -405,6 +410,11 @@ void v2g_session(void *arg) {
 						handle_charging_status(&exiIn, &exiOut);
 						memset(&charge_session.v2g.stateFlow, 0, sizeof(charge_session.v2g.stateFlow));
 						charge_session.v2g.stateFlow.chargingStatus_ok = 1;
+					}
+					else if (exiIn.V2G_Message.Body.MeteringReceiptReq_isUsed) {
+						handle_metering_receipt(&exiIn, &exiOut);
+						memset(&charge_session.v2g.stateFlow, 0, sizeof(charge_session.v2g.stateFlow));
+						charge_session.v2g.stateFlow.meteringReceipt_ok = 1;
 					}
 					else if (exiIn.V2G_Message.Body.SessionStopReq_isUsed) {
 						PRINTF("[V2G] ## Session Stop ##\r\n");
@@ -988,6 +998,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_ecp_keypair *keypair;
 	mbedtls_x509_crt oemProvCrt, contractCrt;
 	mbedtls_aes_context aes_ctx;
+	mbedtls_ecdsa_context oemprov_ctx;
 
 	PRINTF("[V2G] ### Certificate Installation\r\n");
 
@@ -1015,6 +1026,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	mbedtls_pk_init(&contractPkey);
 	mbedtls_aes_init(&aes_ctx);
 	mbedtls_x509_crt_init(&contractCrt);
+	mbedtls_ecdsa_init(&oemprov_ctx);
 
 	/*****************************************
 	 * CLIENT CERTIFICATE HANDLING (EV)
@@ -1089,7 +1101,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	// 		6.2. Add the IV in the first bytes (MSB), along with the ContractPrivKey
 	// 		6.3. Encrypt buffer composed of (IV + ContractPrivKey) » final length should be 48
 	if ((ret = mbedtls_pk_parse_key(&contractPkey, Contract_pkey,
-									Contract_pkey_len, "123456", strlen("123456"))) != 0) {
+									Contract_pkey_len, (unsigned char*)"123456", strlen("123456"))) != 0) {
 		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
 	}
 	// Get actual Private Key 
@@ -1113,7 +1125,6 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	}
 
 	// Free unnecessary structures from this point on
-	mbedtls_x509_crt_free(&oemProvCrt);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
 	mbedtls_aes_free(&aes_ctx);
@@ -1125,18 +1136,14 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	* Check Signature from Request 
 	********************************/
 	PRINTF("[V2G] Checking Signature..\r\n");
-	if (exiIn->V2G_Message.Header.Signature_isUsed) {
-		struct v2gSignatureType *sig = &exiIn->V2G_Message.Header.Signature;
-
-		mbedtls_ecdsa_context oemprov_ctx;
-		mbedtls_ecdsa_init(&oemprov_ctx);
+	/*if (exiIn->V2G_Message.Header.Signature_isUsed) {
 
 		// Use provided OEMProvisioning certificate 
 		if ((ret = mbedtls_ecdsa_from_keypair(&oemprov_ctx, keypair)) != 0) {
 			PRINTF("ECDSA from keypair error: %d\r\n", ret);
 		}
 
-		if ((ret = verify_v2g_signature(&exiIn, &oemprov_ctx)) != 0) {
+		if ((ret = verify_v2g_signature(exiIn, &oemprov_ctx)) != 0) {
 			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
 			exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
 		}
@@ -1145,11 +1152,11 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	else {
 		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
 		exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
-	}
+	}*/
 	PRINTF("[V2G] Signature check performed!\r\n");
 	exiOut->V2G_Message.Body.CertificateInstallationRes.ResponseCode = v2gresponseCodeType_OK;
 
-	//mbedtls_ecp_keypair_free(keypair);
+	mbedtls_x509_crt_free(&oemProvCrt);
 
 	/*************************************
 	 * WRITE TO OUTPUT STRUCTURE
@@ -1234,7 +1241,7 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 		PRINTF("CERT LOAD ERR : %d\r\n", ret);
 	}
 	
-	eMAIDLen = find_oid_value_in_name(&contractCrt.subject, "CN", eMAID, sizeof(eMAID));
+	eMAIDLen = find_oid_value_in_name(&contractCrt.subject, "CN", (char*)eMAID, sizeof(eMAID));
 	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.charactersLen = 3;
 	memcpy(	exiOut->V2G_Message.Body.CertificateInstallationRes.eMAID.Id.characters, 
 			"id4", 
@@ -1273,9 +1280,326 @@ void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXI
 	return;
 }
 
+void handle_certificate_update(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut) {
+	PRINTF("[V2G] CERTIFICATE UPDATE\r\n");
+
+	uint16_t i;
+	int ret;
+	const char pers[] = "ecdh";
+	size_t dhPubkeyLen, eMAIDLen, secretLen, certLen;
+	unsigned char dhPukeyBuf[128];
+	unsigned char 	iv[16], 
+					contractPkeyBytes[32], 
+					privKeyBuf[48], 
+					encryptBuf[48],
+					certBuffer[256],
+					secretBuffer[512],
+					eMAID[64],
+					sessionKey[32];// 128 bits V2G-818
+	const uint8_t keyInfo[3] = {0x01, 0x55, 0x56}; // Salt - V2G-818 
+	mbedtls_md_context_t md_ctx;
+	mbedtls_ecdh_context ecdh, ctx_ev;
+	mbedtls_ctr_drbg_context ctr_drbg;
+	mbedtls_entropy_context entropy;
+	mbedtls_pk_context contractPkey;
+	mbedtls_ecp_keypair *keypair;
+	mbedtls_x509_crt oldContractCrt, newContractCrt;
+	mbedtls_aes_context aes_ctx;
+	mbedtls_ecdsa_context oemprov_ctx;
+
+	PRINTF("[V2G] ### Certificate Update\r\n");
+
+	// Prepare response
+	init_v2gCertificateUpdateResType(&exiOut->V2G_Message.Body.AuthorizationRes);
+	exiOut->V2G_Message.Body.CertificateUpdateRes_isUsed = 1u;
+
+	// Process request
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ResponseCode = v2gresponseCodeType_OK;
+	if (!charge_session.v2g.stateFlow.paymentServiceSelection_ok) {
+		exiOut->V2G_Message.Body.CertificateUpdateRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
+	}
+	if (!check_ev_session_id(exiIn->V2G_Message.Header)) {
+		exiOut->V2G_Message.Body.CertificateUpdateRes.ResponseCode = v2gresponseCodeType_FAILED_UnknownSession;
+	}
+
+	// Structure inits
+	mbedtls_ecdh_init(&ecdh);
+	mbedtls_ecdh_init(&ctx_ev);
+	mbedtls_entropy_init(&entropy);
+	mbedtls_ctr_drbg_init(&ctr_drbg);
+	mbedtls_ecdh_init(&ecdh);
+	mbedtls_md_init(&md_ctx); 
+	mbedtls_pk_init(&contractPkey);
+	mbedtls_aes_init(&aes_ctx);
+	mbedtls_x509_crt_init(&oldContractCrt);
+	mbedtls_x509_crt_init(&newContractCrt);
+	mbedtls_ecdsa_init(&oemprov_ctx);
+
+	/*****************************************
+	 * CLIENT CERTIFICATE HANDLING (EV)
+	 * ***************************************/
+	// Step 1: load client certificate (Contract - DER encoded)
+	// Confirm that the chain leads up to a Root installed in the SECC
+	if ((ret = mbedtls_x509_crt_parse_der(	&oldContractCrt, 
+											exiIn->V2G_Message.Body.CertificateUpdateReq.ContractSignatureCertChain.Certificate.bytes, 
+											exiIn->V2G_Message.Body.CertificateUpdateReq.ContractSignatureCertChain.Certificate.bytesLen)) != 0) {
+		PRINTF("CERT LOAD ERR : %d\r\n", ret);
+	}
+	// Check chain
+	if (exiIn->V2G_Message.Body.CertificateUpdateReq.ContractSignatureCertChain.SubCertificates_isUsed) {
+		/*if ((ret = mbedtls_x509_crt_parse_der(	&oldContractCrt, 
+												exiIn->V2G_Message.Body.CertificateUpdateReq.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytes, 
+												exiIn->V2G_Message.Body.CertificateUpdateReq.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytesLen)) != 0) {
+			PRINTF("CERT LOAD ERR : %d\r\n", ret);
+		}*/
+		;
+	}
+	
+	// Get public key of Contract
+	if ((ret = mbedtls_pk_write_pubkey_pem(&oldContractCrt.pk, certBuffer, sizeof(certBuffer))) != 0) {
+		PRINTF("PUBKEY WRITE ERR : %d\r\n", ret);
+	}
+	certLen = strlen((char *)certBuffer);
+
+	/*****************************************
+	 * SERVER KEYPAIR CREATION(EVSE)
+	 * ***************************************/
+	// Step 2: create new ECDH context for server
+	if ((ret = mbedtls_ctr_drbg_seed(	&ctr_drbg, mbedtls_entropy_func, 
+										&entropy, (const unsigned char *) pers, strlen(pers))) != 0) {
+		PRINTF("EC ERR 1 : %d\r\n", ret);
+	}
+	if ((ret = mbedtls_ecp_group_load(&ecdh.grp, MBEDTLS_ECP_DP_SECP256R1)) != 0) {
+		PRINTF("EC ERR 2 : %d\r\n", ret);
+	}
+	if ((ret = mbedtls_ecdh_gen_public(	&ecdh.grp, &ecdh.d, &ecdh.Q,
+                                   		mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
+		PRINTF("EC ERR 3 : %d\r\n", ret);
+	}
+	if ((ret = mbedtls_mpi_lset(&ecdh.Qp.Z, 1)) != 0) {
+		PRINTF("EC ERR 5 : %d\r\n", ret);
+	}
+	
+	// Step 3: confirm that the EV public key exists in our 'server curve' (valid point)
+	// Create ECP point from EV public key
+	keypair = mbedtls_pk_ec(oldContractCrt.pk); /* quick access to public key */
+	ecdh.Qp = keypair->Q;
+	if ((ret = mbedtls_ecp_check_pubkey(&ecdh.grp, &ecdh.Qp)) != 0) {
+		PRINTF("ECP CHECK ERR : %d\r\n", ret);
+	}
+
+	// Step 4: compute shared secret
+	if ((ret = mbedtls_ecdh_compute_shared( &ecdh.grp, &ecdh.z,
+											&ecdh.Qp, &ecdh.d,
+											mbedtls_ctr_drbg_random, &ctr_drbg)) != 0) {
+		PRINTF("EC ERR 7 : %d\r\n", ret);
+	}
+	if ((ret = mbedtls_ecdh_calc_secret(	&ecdh, &secretLen,
+											secretBuffer, 512,
+											mbedtls_ctr_drbg_random,
+											&ctr_drbg)) != 0) {
+		PRINTF("EC ERR 8 : %d\r\n", ret);
+	}
+
+	// Step 5: Generate shared key based on shared secret
+	md_ctx.md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+	/*
+	* THIS SHOULD BE A DIFFERENT FUNCTION (concatKDF) !!!!!!!!!!!
+	*/
+	if ((ret = mbedtls_hkdf(	md_ctx.md_info, 
+								NULL, 0, 
+								secretBuffer, secretLen, 
+								keyInfo, sizeof(keyInfo), 
+								sessionKey, sizeof(sessionKey))) != 0) {
+		PRINTF("HMAC KDF ERR: %d\r\n", ret);
+	}
+
+	// Step 6: encrypt EV private key with the computed secret key
+	// 		6.1. Extract PrivateKey component
+	// 		6.2. Add the IV in the first bytes (MSB), along with the ContractPrivKey
+	// 		6.3. Encrypt buffer composed of (IV + ContractPrivKey) » final length should be 48
+	if ((ret = mbedtls_pk_parse_key(&contractPkey, Contract_pkey,
+									Contract_pkey_len, (unsigned char*)"123456", strlen("123456"))) != 0) {
+		PRINTF("CONTRACT PKEY PARSE ERR: %d\r\n", ret);
+	}
+	// Get actual Private Key 
+	mbedtls_ecp_keypair *privKeyRaw = mbedtls_pk_ec(contractPkey);
+	if ((ret = mbedtls_mpi_write_binary(&privKeyRaw->d, contractPkeyBytes, sizeof(contractPkeyBytes))) != 0) {
+		PRINTF("PRIV KEY MP WRITE ERR: %d\r\n", ret);
+	}
+	// Compose buffer with [IV, Key]
+	memset(iv, 0xCC, sizeof(iv)); // INITIALIZE WITH RANDOM DATA
+	memcpy(privKeyBuf, iv, sizeof(iv));
+	memcpy(&privKeyBuf[sizeof(iv)], contractPkeyBytes, sizeof(contractPkeyBytes));
+	// Encrypt buffer
+	if ((ret = mbedtls_aes_setkey_enc(&aes_ctx, sessionKey, 128)) != 0) { // 128 keybits
+		PRINTF("AES SETKEY ERR: %d\r\n", ret);
+	}
+	// Encryption must be with an input buffer of %16 bytes
+	if ((ret = mbedtls_aes_crypt_cbc(	&aes_ctx, MBEDTLS_AES_ENCRYPT, 
+										sizeof(privKeyBuf), iv, 
+										privKeyBuf, encryptBuf)) != 0) {
+		PRINTF("AES ENCRYPT ERR: %d\r\n", ret);
+	}
+
+	// Free unnecessary structures from this point on
+	mbedtls_ctr_drbg_free(&ctr_drbg);
+	mbedtls_entropy_free(&entropy);
+	mbedtls_aes_free(&aes_ctx);
+	mbedtls_ecdh_free(&ctx_ev);
+	mbedtls_pk_free(&contractPkey);
+	mbedtls_md_free(&md_ctx);
+
+	/*******************************
+	* Check Signature from Request 
+	********************************/
+	PRINTF("[V2G] Checking Signature..\r\n");
+	/*if (exiIn->V2G_Message.Header.Signature_isUsed) {
+
+		// Use provided Contract certificate 
+		if ((ret = mbedtls_ecdsa_from_keypair(&oldContractCrt, keypair)) != 0) {
+			PRINTF("ECDSA from keypair error: %d\r\n", ret);
+		}
+
+		if ((ret = verify_v2g_signature(exiIn, &oemprov_ctx)) != 0) {
+			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+			exiOut->V2G_Message.Body.CertificateUpdateRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+		}
+		mbedtls_ecdsa_free(&oemprov_ctx);
+	}
+	else {
+		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
+		exiOut->V2G_Message.Body.CertificateUpdateRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+	}*/
+	PRINTF("[V2G] Signature check performed!\r\n");
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ResponseCode = v2gresponseCodeType_OK;
+
+	mbedtls_x509_crt_free(&oldContractCrt);
+
+	/*************************************
+	 * WRITE TO OUTPUT STRUCTURE
+	 * ***********************************/
+	// Uncompressed DH public key (ISO 15118-2)
+	if ((ret = mbedtls_ecp_point_write_binary(	&ecdh.grp, &ecdh.Q, 
+												MBEDTLS_ECP_PF_UNCOMPRESSED, &dhPubkeyLen, 
+												dhPukeyBuf, sizeof(dhPukeyBuf))) != 0) {
+		PRINTF("WRITE BINARY PUB KEY ERR: %d\r\n", ret);
+	}
+	mbedtls_ecdh_free(&ecdh);
+
+	// SAProvisioningCertificateChain
+	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.Id_isUsed = 0u;
+	//exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.Id.charactersLen = 3;
+	//memcpy(exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.Id.characters, "id1", 3);
+
+	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates_isUsed = 1;
+	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.arrayLen = 2; // 2 sub-certificates
+	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytesLen = CPS_Inter_1_Cert_len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytes,
+			CPS_Inter_1_Cert,
+			exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[0].bytesLen);
+
+	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytesLen = CPS_Inter_2_Cert_len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytes,
+			CPS_Inter_2_Cert,
+			exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.SubCertificates.Certificate.array[1].bytesLen);
+
+	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.Certificate.bytesLen = CPS_Leaf_Cert_len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.Certificate.bytes,
+			CPS_Leaf_Cert,
+			exiOut->V2G_Message.Body.CertificateUpdateRes.SAProvisioningCertificateChain.Certificate.bytesLen);
+
+	// ContractSignatureCertChain
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Id_isUsed = 1u;
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Id.charactersLen = 3;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Id.characters, 
+			"id1", 
+			exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Id.charactersLen);
+
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates_isUsed = 1;
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.arrayLen = 2; // 2 sub-certificates
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytesLen = Contract_Inter_1_Cert_len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytes,
+			Contract_Inter_1_Cert,
+			exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.array[0].bytesLen);
+
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytesLen = Contract_Inter_2_Cert_len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytes,
+			Contract_Inter_2_Cert,
+			exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.SubCertificates.Certificate.array[1].bytesLen);
+
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Certificate.bytesLen = Contract_Leaf_Cert_len;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Certificate.bytes,
+			Contract_Leaf_Cert,
+			exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureCertChain.Certificate.bytesLen);
+
+	// Encrypted Contract Private Key
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureEncryptedPrivateKey.Id.charactersLen = 3;
+	memcpy(exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureEncryptedPrivateKey.Id.characters, "id2", 3);
+	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytesLen = sizeof(encryptBuf);
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.ContractSignatureEncryptedPrivateKey.CONTENT.bytes,
+			encryptBuf,
+			sizeof(encryptBuf));
+
+	// DH Public Key
+	exiOut->V2G_Message.Body.CertificateUpdateRes.DHpublickey.Id.charactersLen = 3;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.DHpublickey.Id.characters,
+			"id3",
+			exiOut->V2G_Message.Body.CertificateUpdateRes.DHpublickey.Id.charactersLen);
+	exiOut->V2G_Message.Body.CertificateUpdateRes.DHpublickey.CONTENT.bytesLen = dhPubkeyLen;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.DHpublickey.CONTENT.bytes, 
+			dhPukeyBuf, dhPubkeyLen);
+
+	// eMAID
+	// ContractCertificateChain, find DN of certificate
+	// TODO: remove hyphens from eMAID?
+	eMAIDLen = find_oid_value_in_name(&newContractCrt.subject, "CN", (char*)eMAID, sizeof(eMAID));
+	exiOut->V2G_Message.Body.CertificateUpdateRes.eMAID.Id.charactersLen = 3;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.eMAID.Id.characters, 
+			"id4", 
+			exiOut->V2G_Message.Body.CertificateUpdateRes.eMAID.Id.charactersLen);
+	exiOut->V2G_Message.Body.CertificateUpdateRes.eMAID.CONTENT.charactersLen = eMAIDLen;
+	memcpy(	exiOut->V2G_Message.Body.CertificateUpdateRes.eMAID.CONTENT.characters,
+			eMAID,
+			eMAIDLen);
+	mbedtls_x509_crt_free(&newContractCrt);
+
+	// Retry Counter
+	exiOut->V2G_Message.Body.CertificateUpdateRes.RetryCounter_isUsed = 0u;
+
+	/*************************************
+	 * CREATING V2G SIGNATURE
+	 * ***********************************/
+	//struct v2gEXIFragment *auth_fragment_create = (struct v2gEXIFragment*) pvPortMalloc(sizeof(struct v2gEXIFragment));
+    /*struct v2gEXIFragment auth_fragment_create;
+
+	init_v2gEXIFragment(&auth_fragment_create);
+    auth_fragment_create.CertificateInstallationRes_isUsed = 1u;
+	PRINTF("SIZE OF CERTIFICATE INSTALL RES: %d\r\n", sizeof(auth_fragment_create.CertificateInstallationRes));
+    memcpy(	&auth_fragment_create.CertificateInstallationRes, 
+			&exiOut->V2G_Message.Body.CertificateInstallationRes, 
+			sizeof(auth_fragment_create.CertificateInstallationRes));
+			
+	if ((ret = create_v2g_signature(&auth_fragment_create, 
+									&exiOut->V2G_Message.Header.Signature,
+									&ctr_drbg)) != 0) {
+		PRINTF("[V2G] CREATING V2G ERR: %d\r\n", ret);
+	}
+	else {
+		exiOut->V2G_Message.Header.Signature_isUsed = 1u;
+	}
+	//vPortFree(auth_fragment_create);*/
+
+	PRINTF("Certificate Update DONE!\r\n");
+	
+	return;
+}
+
 void handle_authorization(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut) {
 
 	PRINTF("[V2G] AUTHORIZATION\r\n");
+	int ret;
+
 	// Prepare response
 	init_v2gAuthorizationResType(&exiOut->V2G_Message.Body.AuthorizationRes);
 	exiOut->V2G_Message.Body.AuthorizationRes_isUsed = 1u;
@@ -1296,6 +1620,24 @@ void handle_authorization(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *e
 	}
 
 	exiOut->V2G_Message.Body.AuthorizationRes.EVSEProcessing = v2gEVSEProcessingType_Finished;
+
+	/*******************************
+	* Check Signature from Request 
+	********************************/
+	/*PRINTF("[V2G] Checking Signature..\r\n");
+	if (exiIn->V2G_Message.Header.Signature_isUsed) {
+
+		if ((ret = verify_v2g_signature(exiIn, NULL)) != 0) {
+			PRINTF("CERTIFICATE INSTALLATION SIGNATURE INVALID\r\n");
+			exiOut->V2G_Message.Body.AuthorizationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+		}
+	}
+	else {
+		PRINTF("[V2G] V2G SIGNATURE NOT PRESENT IN REQUEST!\r\n");
+		exiOut->V2G_Message.Body.AuthorizationRes.ResponseCode = v2gresponseCodeType_FAILED_SignatureError;
+	}*/
+	PRINTF("[V2G] Signature check performed!\r\n");
+
 	return;
 }
 
@@ -1517,7 +1859,8 @@ void handle_power_delivery(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 	if (charge_session.v2g.energyTransferMode.EnergyTransferMode.array[0] == v2gEnergyTransferModeType_AC_single_phase_core ||
 		charge_session.v2g.energyTransferMode.EnergyTransferMode.array[0] == v2gEnergyTransferModeType_AC_three_phase_core) {
 		
-		if (!charge_session.v2g.stateFlow.chargeParamDiscovery_ok && !charge_session.v2g.stateFlow.chargingStatus_ok) {
+		if (!charge_session.v2g.stateFlow.chargeParamDiscovery_ok && !charge_session.v2g.stateFlow.chargingStatus_ok &&
+			!charge_session.v2g.stateFlow.meteringReceipt_ok) {
 			exiOut->V2G_Message.Body.PowerDeliveryRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
 		}
 
@@ -1529,7 +1872,8 @@ void handle_power_delivery(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 	// DC Charging sequence
 	else {
 
-		if (!charge_session.v2g.stateFlow.preCharge_ok && !charge_session.v2g.stateFlow.currentDemand_ok) {
+		if (!charge_session.v2g.stateFlow.preCharge_ok && !charge_session.v2g.stateFlow.currentDemand_ok &&
+			!charge_session.v2g.stateFlow.meteringReceipt_ok) {
 			exiOut->V2G_Message.Body.PowerDeliveryRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
 		}
 
@@ -1553,6 +1897,7 @@ void handle_current_demand(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 	// Process request
 	exiOut->V2G_Message.Body.CurrentDemandRes.ResponseCode = v2gresponseCodeType_OK;
 	if (!charge_session.v2g.stateFlow.powerDelivery_ok && !charge_session.v2g.stateFlow.currentDemand_ok &&
+		!charge_session.v2g.stateFlow.meteringReceipt_ok &&
 		(charge_session.vehicle.ev_charge_progress != v2gchargeProgressType_Start)) {
 		exiOut->V2G_Message.Body.CurrentDemandRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
 	}
@@ -1582,6 +1927,9 @@ void handle_current_demand(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 			v2g_physical_val_get(charge_session.charger.evse_max_power)) {
 		exiOut->V2G_Message.Body.CurrentDemandRes.EVSEPowerLimitAchieved = 1u;
 	}
+
+	exiOut->V2G_Message.Body.CurrentDemandRes.ReceiptRequired_isUsed = 1u;
+	//exiOut->V2G_Message.Body.CurrentDemandRes.ReceiptRequired = 1u; // Enable MeteringReceipt
 
 	exiOut->V2G_Message.Body.CurrentDemandRes.EVSEMaximumCurrentLimit_isUsed = 1u;
 	exiOut->V2G_Message.Body.CurrentDemandRes.EVSEMaximumCurrentLimit = charge_session.charger.evse_max_current;
@@ -1633,7 +1981,8 @@ void handle_charging_status(struct v2gEXIDocument *exiIn, struct v2gEXIDocument 
 
 	// Process request
 	exiOut->V2G_Message.Body.ChargingStatusRes.ResponseCode = v2gresponseCodeType_OK;
-	if (!charge_session.v2g.stateFlow.powerDelivery_ok && !charge_session.v2g.stateFlow.chargingStatus_ok) {
+	if (!charge_session.v2g.stateFlow.powerDelivery_ok && !charge_session.v2g.stateFlow.chargingStatus_ok &&
+		!charge_session.v2g.stateFlow.meteringReceipt_ok) {
 		exiOut->V2G_Message.Body.ChargingStatusRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
 	}
 	if (!check_ev_session_id(exiIn->V2G_Message.Header)) {
@@ -1646,8 +1995,97 @@ void handle_charging_status(struct v2gEXIDocument *exiIn, struct v2gEXIDocument 
 	exiOut->V2G_Message.Body.ChargingStatusRes.EVSEMaxCurrent = charge_session.charger.evse_max_line_current;
 	exiOut->V2G_Message.Body.ChargingStatusRes.MeterInfo_isUsed = 0;
 	exiOut->V2G_Message.Body.ChargingStatusRes.ReceiptRequired_isUsed = 1u;
-	exiOut->V2G_Message.Body.ChargingStatusRes.ReceiptRequired = 0;
+	//exiOut->V2G_Message.Body.ChargingStatusRes.ReceiptRequired = 1; // Enable MeteringReceipt
 	exiOut->V2G_Message.Body.ChargingStatusRes.AC_EVSEStatus = charge_session.charger.AC_EVSEStatus;
+
+	return;
+}
+
+void handle_metering_receipt(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut) {
+	
+	PRINTF("[V2G] METERING RECEIPT\r\n");
+	int i;
+	static uint8_t cycle = 0;
+
+	// Prepare response
+	init_v2gMeteringReceiptResType(&exiOut->V2G_Message.Body.MeteringReceiptRes);
+	exiOut->V2G_Message.Body.MeteringReceiptRes_isUsed = 1u;
+
+	// Process request
+	exiOut->V2G_Message.Body.MeteringReceiptRes.ResponseCode = v2gresponseCodeType_OK;
+	
+	if (!check_ev_session_id(exiIn->V2G_Message.Header)) {
+		exiOut->V2G_Message.Body.MeteringReceiptRes.ResponseCode = v2gresponseCodeType_FAILED_UnknownSession;
+	}
+
+	/* Test inputs */
+	if (exiIn->V2G_Message.Body.MeteringReceiptReq.Id_isUsed) {
+		PRINTF("ID Len: %d\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.Id.charactersLen);
+		for (i = 0; i < exiIn->V2G_Message.Body.MeteringReceiptReq.Id.charactersLen; i++) {
+			PRINTF("%c", exiIn->V2G_Message.Body.MeteringReceiptReq.Id.characters[i]);
+		}
+	}
+	PRINTF("\r\n");
+
+	PRINTF("SessionID Len: %d\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.SessionID.bytesLen);
+	for (i = 0; i < exiIn->V2G_Message.Body.MeteringReceiptReq.SessionID.bytesLen; i++) {
+		PRINTF("%02x ", exiIn->V2G_Message.Body.MeteringReceiptReq.SessionID.bytes[i]);
+	}
+	PRINTF("\r\n");
+
+	if (exiIn->V2G_Message.Body.MeteringReceiptReq.SAScheduleTupleID_isUsed) {
+		PRINTF("SAScheduleTupleID: %d\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.SAScheduleTupleID);
+	}
+
+	PRINTF("MeterID Len: %d\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterID.charactersLen);
+	for (i = 0; i < exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterID.charactersLen; i++) {
+		PRINTF("%c", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterID.characters[i]);
+	}
+	PRINTF("\r\n");
+
+	if (exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterReading_isUsed) {
+		PRINTF("MeterReading: %d\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterReading);
+	}
+	if (exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.SigMeterReading_isUsed) {
+		PRINTF("SigMeterReading Len: \r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.SigMeterReading.bytesLen);
+		for (i = 0; i < exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.SigMeterReading.bytesLen; i++) {
+			PRINTF("%c", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.SigMeterReading.bytes[i]);
+		}
+		PRINTF("\r\n");
+	}
+	if (exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterStatus_isUsed) {
+		PRINTF("MeterStatus: %d\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.MeterStatus);
+	}
+	if (exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.TMeter_isUsed) {
+		PRINTF("TMeter: %l\r\n", exiIn->V2G_Message.Body.MeteringReceiptReq.MeterInfo.TMeter);
+	}
+
+	exiOut->V2G_Message.Body.MeteringReceiptRes.EVSEStatus_isUsed = 1u;
+	// AC Charging sequence
+	if (charge_session.v2g.energyTransferMode.EnergyTransferMode.array[0] == v2gEnergyTransferModeType_AC_single_phase_core ||
+		charge_session.v2g.energyTransferMode.EnergyTransferMode.array[0] == v2gEnergyTransferModeType_AC_three_phase_core) {
+
+		if (!charge_session.v2g.stateFlow.chargingStatus_ok) {
+			exiOut->V2G_Message.Body.MeteringReceiptRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
+		}
+			
+		exiOut->V2G_Message.Body.MeteringReceiptRes.AC_EVSEStatus_isUsed = 1u;
+		exiOut->V2G_Message.Body.MeteringReceiptRes.DC_EVSEStatus_isUsed = 0u;
+		exiOut->V2G_Message.Body.MeteringReceiptRes.AC_EVSEStatus = charge_session.charger.AC_EVSEStatus;
+		exiOut->V2G_Message.Body.MeteringReceiptRes.AC_EVSEStatus.EVSENotification = v2gEVSENotificationType_StopCharging; // Renegotiation possible! 
+	}
+	// DC Charging sequence
+	else {
+
+		if (!charge_session.v2g.stateFlow.currentDemand_ok) {
+			exiOut->V2G_Message.Body.MeteringReceiptRes.ResponseCode = v2gresponseCodeType_FAILED_SequenceError;
+		}
+		exiOut->V2G_Message.Body.MeteringReceiptRes.AC_EVSEStatus_isUsed = 0u;
+		exiOut->V2G_Message.Body.MeteringReceiptRes.DC_EVSEStatus_isUsed = 1u;
+		exiOut->V2G_Message.Body.MeteringReceiptRes.DC_EVSEStatus = charge_session.charger.DC_EVSEStatus; 
+		exiOut->V2G_Message.Body.MeteringReceiptRes.DC_EVSEStatus.EVSENotification = v2gEVSENotificationType_StopCharging; // Renegotiation possible! 
+		
+	}
 
 	return;
 }
@@ -1693,7 +2131,7 @@ void v2g_init() {
 	}    
 
 	// V2G Thread
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 8500, 4) == NULL) { // 7000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 4) == NULL) { // 7000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 

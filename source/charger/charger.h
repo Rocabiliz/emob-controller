@@ -105,6 +105,7 @@ struct v2g_session_t {
         bool paymentDetails_ok;
         bool paymentServiceSelection_ok;
         bool certificateInstallation_ok;
+        bool certificateUpdate_ok;
         bool authorization_ok;
         bool chargeParamDiscovery_ok;
         bool cableCheck_ok;
@@ -113,6 +114,7 @@ struct v2g_session_t {
         bool currentDemand_ok;
         bool weldingDetection_ok;
         bool chargingStatus_ok;
+        bool meteringReceipt_ok;
         bool sessionStop_ok;
     } stateFlow;
     uint8_t ev_ip_addr[16];

@@ -63,6 +63,7 @@ void handle_service_detail(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 void handle_payment_service_selection(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_payment_details(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_certificate_installation(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
+void handle_certificate_update(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_authorization(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_charge_param_discovery(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_cable_check(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
@@ -71,7 +72,7 @@ void handle_power_delivery(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *
 void handle_current_demand(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_welding_detection(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_charging_status(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
+void handle_metering_receipt(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
 void handle_session_stop(struct v2gEXIDocument *exiIn, struct v2gEXIDocument *exiOut);
-int secc_discovery_protocol(void* arg);
 
 #endif

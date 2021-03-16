@@ -378,11 +378,9 @@ int tls_stack_init() {
 		PRINTF( " failed\n  ! mbedtls_ssl_config_defaults returned %d\n\n", ret );
 		return ret;
 	}
-
-	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+    mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED); // MBEDTLS_SSL_VERIFY_NONE
-
-	// MBEDTLS Debugging options
+    mbedtls_ssl_conf_read_timeout(&conf, (uint32_t)TLS_TIMEOUT_MS);
 	mbedtls_ssl_conf_dbg(&conf, my_debug, NULL);
 	mbedtls_debug_set_threshold(DEBUG_LEVEL);
 
@@ -398,6 +396,7 @@ int tls_stack_init() {
         PRINTF( "TLS Verify certs failed: %d\r\n", ret);
 		return ret;
     }
+    
 
     // Initialize contract structure for XML signature validation
 	mbedtls_x509_crt_init(&v2gsig_crt);
@@ -411,7 +410,7 @@ int tls_stack_init() {
     if ((ret = mbedtls_ecdsa_from_keypair(&charge_session.v2g.contract_ctx, keypair)) != 0) {
         PRINTF("TLS INIT: loading ecdsa from keypair err: %d\r\n", ret);
     }
-    mbedtls_x509_crt_free(&v2gsig_crt); // is this ok?
+    //mbedtls_x509_crt_free(&v2gsig_crt); // is this ok?
     
     PRINTF("[TLS] Init successful!\r\n");
 	return ret;
@@ -430,7 +429,6 @@ int tls_conn_init(struct netconn *conn) {
 		ret = ret;
 	}
     mbedtls_ssl_set_bio(&ssl, conn, &tls_net_send, &tls_net_rcv, NULL);
-    mbedtls_ssl_conf_read_timeout(&ssl, (uint32_t)TLS_TIMEOUT_MS);
 
     return ret;
 }

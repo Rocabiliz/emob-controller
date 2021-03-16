@@ -351,7 +351,7 @@ void *pvPortCalloc(size_t num, size_t size); /*Calloc for HEAP3.*/
 #define MBEDTLS_SSL_MAX_CONTENT_LEN (1024 * 16) /* Reduce SSL frame buffer. */
 #define MBEDTLS_MPI_WINDOW_SIZE 1
 #define MBEDTLS_ECP_WINDOW_SIZE 2
-#define MBEDTLS_MPI_MAX_SIZE 4096 /* Maximum number of bytes for usable MPIs. */
+#define MBEDTLS_MPI_MAX_SIZE 1024 /* Maximum number of bytes for usable MPIs. */
 #define MBEDTLS_ECP_MAX_BITS 521 /* Maximum bit size of groups */
 
 /**************************** KSDK end ****************************************/
