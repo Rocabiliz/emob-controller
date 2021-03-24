@@ -10,6 +10,8 @@
 
 #include "stdint.h"
 #include "stdbool.h"
+#include "board.h"
+#include "fsl_gpio.h"
 
 /* CP related defines */
 #define MIN_CP_FREQ 0
@@ -42,27 +44,28 @@ typedef enum charge_mode charge_mode_t;
 enum ccs_cp_state {UNKNOWN,A,B,C1,C2,D,E,F};
 typedef enum ccs_cp_state ccs_cp_state_t;
 
-typedef struct cp_gen_t {
+struct cp_gen_t {
     bool enable;
     uint8_t mode;
     uint8_t output;
     double freq;
     double samplingFreq;
     double dutyCycle;
-} cp_gen_t;
+    gpio_pin_config_t gpio;
+};
 
-typedef struct timer_t {
+struct timer_t {
     uint32_t counter;
-} timer_t;
+};
 
 /* Functions */
 /* CCS related structures and functions */
-double calcCCSAcDutyCycle(double maxAcCurr);
-double calcCCSPPMaxCurr(double PPresistance, uint8_t nbPhases);
-ccs_cp_state_t calcCCSCPState(double cp_voltage);
-struct cp_gen_t initCP(charge_mode_t mode, double freq, double dutyCycle, double taskIntFreq);
-void setCPFreq(struct cp_gen_t *cp, double freq);
-void setCPDutyCycle(struct cp_gen_t *cp, double dutyCycle);
-void handleCPGen(struct cp_gen_t *cp, struct timer_t *tmr);
+double calc_ccs_ac_dutycyle(double maxAcCurr);
+double calc_ccs_pp_max_curr(double PPresistance, uint8_t nbPhases);
+ccs_cp_state_t calc_CP_state(double cp_voltage);
+void CP_init(struct cp_gen_t *cp, charge_mode_t mode, double freq, double dutyCycle, double taskIntFreq);
+void set_CP_freq(struct cp_gen_t *cp, double freq);
+void set_CP_dutycycle(struct cp_gen_t *cp, double dutyCycle);
+void handle_CP_gen(struct cp_gen_t *cp, struct timer_t *tmr);
 
 #endif /* CP_GEN_CPGEN_H_ */

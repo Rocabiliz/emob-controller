@@ -13,7 +13,7 @@
 /*!
  * @brief Calculates duty cycle for AC CCS according to IEC 61851-1/Table A.6
  */
-double calcCCSAcDutyCycle(double maxAcCurr) {
+double calc_ccs_ac_dutycyle(double maxAcCurr) {
 
     if (maxAcCurr >= 6 && maxAcCurr <= 51) {
         return maxAcCurr / 0.6;
@@ -28,7 +28,7 @@ double calcCCSAcDutyCycle(double maxAcCurr) {
  * @brief Calculates cable maximum current based on the proximity resistance 
  * for AC CCS according to IEC 61851-1/Table B.3
  */
-double calcCCSPPMaxCurr(double ppResistance, uint8_t nbPhases) {
+double calc_ccs_pp_max_curr(double ppResistance, uint8_t nbPhases) {
 
     // Considering the tolerance in the standard
     if ((ppResistance >= 1500 - 1500*CCS_PP_RESISTANCE_TOLERANCE) && 
@@ -59,7 +59,7 @@ double calcCCSPPMaxCurr(double ppResistance, uint8_t nbPhases) {
 /*!
  * @brief CCS CP state according to IEWC 61851-1/Table A.3
  */
-ccs_cp_state_t calcCCSCPState(double cpVoltage) {
+ccs_cp_state_t calc_CP_state(double cpVoltage) {
 
     if ((cpVoltage >= CPSTATE_A_MIN_VOLTAGE) && (cpVoltage <= CPSTATE_A_MAX_VOLTAGE)) {
         return A;
@@ -85,38 +85,39 @@ ccs_cp_state_t calcCCSCPState(double cpVoltage) {
 /*!
  * @brief Initializes a CP struct with the configuration
  */
-struct cp_gen_t initCP(charge_mode_t mode, double freq, double dutyCycle, double taskIntFreq) {
-    struct cp_gen_t cp;
+void CP_init(struct cp_gen_t *cp, charge_mode_t mode, double freq, double dutyCycle, double taskIntFreq) {
 
-    cp.mode = (uint8_t)mode;
-    cp.freq = freq;
-    cp.samplingFreq = taskIntFreq;
+    cp->mode = (uint8_t)mode;
+    cp->freq = freq;
+    cp->samplingFreq = taskIntFreq;
+    cp->gpio.pinDirection = kGPIO_DigitalOutput;
+    cp->gpio.outputLogic = 0; 
 
     switch (mode) {
     case UNDEFINED:
-        memset(&cp, 0, sizeof(cp));
+        memset(cp, 0, sizeof(struct cp_gen_t));
         break;
         
     case CCS_AC:
-        cp.dutyCycle = dutyCycle;
+        cp->dutyCycle = dutyCycle;
         break;
 
     case CCS_DC:
-        cp.dutyCycle = CCS_DC_DUTY_CYCLE;
+        cp->dutyCycle = CCS_DC_DUTY_CYCLE;
         break;
 
     default:
-    	cp.dutyCycle = 0;
+    	cp->dutyCycle = 0;
     	break;
     }
 
-    return cp;
+    return;
 }
 
 /*!
  * @brief Setter function for CP frequency
  */
-void setCPFreq(struct cp_gen_t *cp, double freq) {
+void set_CP_freq(struct cp_gen_t *cp, double freq) {
 
     if (freq >= MIN_CP_FREQ && freq <= MAX_CP_FREQ) {
         cp->freq = freq;
@@ -126,7 +127,7 @@ void setCPFreq(struct cp_gen_t *cp, double freq) {
 /*!
  * @brief Setter function for CP duty cycle
  */
-void setCPDutyCycle(struct cp_gen_t *cp, double dutyCycle) {
+void set_CP_dutycycle(struct cp_gen_t *cp, double dutyCycle) {
 
     if (dutyCycle >= MIN_CP_DUTY_CYCLE && dutyCycle <= MAX_CP_DUTY_CYCLE) {
         cp->dutyCycle = dutyCycle;
@@ -140,7 +141,7 @@ void setCPDutyCycle(struct cp_gen_t *cp, double dutyCycle) {
  * interruption calls this function, which will clear the flag 'tmr.tmrFlag'
  * in order to reset the timer count.
  */
-void handleCPGen(struct cp_gen_t *cp, struct timer_t *tmr) {
+void handle_CP_gen(struct cp_gen_t *cp, struct timer_t *tmr) {
 
     if (cp->enable) {
 
@@ -154,13 +155,16 @@ void handleCPGen(struct cp_gen_t *cp, struct timer_t *tmr) {
         case CCS_AC:
         case CCS_DC:
             tmr->counter++;
-            
+
+            //printf("CCS CP counter = %d\r\n", tmr->counter);
+            //printf("Counter calc: %d\r\n",  (uint32_t)((cp->dutyCycle * 0.01 * cp->samplingFreq) / cp->freq));
+
             /* Dutycycle pulse */
-            if (tmr->counter <= (uint32_t)((cp->dutyCycle*cp->freq)/cp->samplingFreq)) { // + 1??
+            if (tmr->counter <= (uint32_t)((cp->dutyCycle * 0.01 * cp->samplingFreq) / cp->freq)) { // + 1??
                 cp->output = 1;
             }
             /* Remainder of the wave */
-            else if (tmr->counter <= (uint32_t)(cp->freq/cp->samplingFreq)) { // + 1??
+            else if (tmr->counter <= (uint32_t)(cp->samplingFreq / cp->freq)) { // + 1??
                 cp->output = 0;
             }
             /* Full period: reset counter*/

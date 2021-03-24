@@ -197,6 +197,10 @@ int main(void) {
     //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
     v2g_init();
     
+    if (sys_thread_new("cp_handler", cp_handler, NULL, 300, 1) == NULL) {
+    		PRINTF("CP Handler thread failed\r\n");
+	}
+
     /* run RTOS */
     vTaskStartScheduler();
     PRINTF("OOOPS\r\n");
@@ -212,28 +216,26 @@ int main(void) {
 static void cp_handler(void *pvParameters) {
 	PRINTF("### CP Generation Task ###\r\n");
 
-    // INPUT MUST BE A 'TIMER' REFERENCE (FTM_1)
-
-    struct cp_gen_t cp;
-    struct timer_t tmr;
+    static struct cp_gen_t cp;
+    static struct timer_t tmr;
 
     /* Initialize data structures */
-    cp = initCP(CCS_DC, CCS_CP_FREQ, MAX_CP_DUTY_CYCLE, 20000);
+    CP_init(&cp, CCS_DC, CCS_CP_FREQ, 50, 20000); // sampling is interrupt frequency (> signal frequency)
     memset(&tmr, 0, sizeof(tmr));
+    GPIO_PinInit(BOARD_SW3_GPIO, 27U, &cp.gpio);
+    PRINTF("Starting CP...\r\n");
+    printf("CCS CP dutycycle = %f\r\n", cp.dutyCycle);
 
-    int counter = 0;
-    while(1) {
+    // TESTING
+    cp.enable = 1;
 
-    	if (counter > 1000) {
-    		PRINTF("TIMER\n");
-    		counter = 0;
-    	}
+    while (1) {
 
         /* Interruption event from timer */
-        if(ftmIsrFlag) {
-            handleCPGen(&cp, &tmr);
+        if (ftmIsrFlag) {
+            handle_CP_gen(&cp, &tmr);
+            GPIO_PinWrite(BOARD_SW3_GPIO, 27U, cp.output);
             ftmIsrFlag = false;
-        	counter++;
         }
         __WFI();
     }
