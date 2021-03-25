@@ -68,17 +68,11 @@
 #define BOARD_SW_GPIO BOARD_SW3_GPIO
 #define BOARD_SW_GPIO_PIN BOARD_SW3_GPIO_PIN
 
-/* Task priorities. */
-
-/* Timer settings */
-volatile bool ftmIsrFlag = false;
-volatile uint32_t milisecondCounts = 0U;
-
-void FTM0_IRQHANDLER(void) {
-    /* Clear interrupt flag.*/
-    FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
-    ftmIsrFlag = true;
-}
+/*******************************************************************************
+ * Variables
+ ******************************************************************************/
+struct charge_session_t charge_session;
+struct cp_gen_t cp1;
 
 /* IP address configuration. */
 #define configIP_ADDR0 192
@@ -110,32 +104,29 @@ void FTM0_IRQHANDLER(void) {
 /* System clock name. */
 #define EXAMPLE_CLOCK_NAME kCLOCK_CoreSysClk
 
-
-/*******************************************************************************
- * Prototypes
- ******************************************************************************/
-static void cp_handler(void *pvParameters);
-
-/*******************************************************************************
- * Variables
- ******************************************************************************/
-struct charge_session_t charge_session;
-
-
 #if defined(FSL_FEATURE_SOC_LPC_ENET_COUNT) && (FSL_FEATURE_SOC_LPC_ENET_COUNT > 0)
 static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;
 #endif /* FSL_FEATURE_SOC_LPC_ENET_COUNT */
 /* FS data.*/
 
+/*!
+* @brief Function for handling FTM0 timer interrupt
+* This particular timer will generate the Control Pilot PWM signals
+ */
+void FTM0_IRQHANDLER(void) {
+    
+    handle_CP_gen(&cp1);
+    GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_1_PIN, cp1.output);
+
+    /* Clear interrupt flag.*/
+    FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
+}
 
 /*!
  * @brief Main function.
  */
 int main(void) {
     PRINTF("Starting APP!\r\n");
-    gpio_pin_config_t output_config = {
-        kGPIO_DigitalOutput, 0,
-    };
 
     CRYPTO_InitHardware();
 
@@ -145,9 +136,10 @@ int main(void) {
     BOARD_InitDebugConsole();
     BOARD_InitBootPeripherals();
 
-    // Sets output
-    GPIO_PinInit(BOARD_SW3_GPIO, BOARD_SW3_GPIO_PIN, &output_config);
-    GPIO_PinWrite(BOARD_SW3_GPIO, BOARD_SW3_GPIO_PIN, 1);
+    /* Control Pilots Initialization */
+    CP_init(&cp1, CCS_DC, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
+    GPIO_PinInit(BOARD_SW3_GPIO, 27U, &cp1.gpio);
+    cp1.enable = 1; // testing!
 
     /* Disable SYSMPU. */
     base->CESR &= ~SYSMPU_CESR_VLD_MASK;
@@ -196,10 +188,6 @@ int main(void) {
 
     //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
     v2g_init();
-    
-    if (sys_thread_new("cp_handler", cp_handler, NULL, 300, 1) == NULL) {
-    		PRINTF("CP Handler thread failed\r\n");
-	}
 
     /* run RTOS */
     vTaskStartScheduler();
@@ -208,37 +196,6 @@ int main(void) {
     /* should not reach this statement */
     for (;;)
         ;
-}
-
-/*!
- * @brief Task for CP generation. Can be used for CCS, GBT or CHAdeMO
- */
-static void cp_handler(void *pvParameters) {
-	PRINTF("### CP Generation Task ###\r\n");
-
-    static struct cp_gen_t cp;
-    static struct timer_t tmr;
-
-    /* Initialize data structures */
-    CP_init(&cp, CCS_DC, CCS_CP_FREQ, 50, 20000); // sampling is interrupt frequency (> signal frequency)
-    memset(&tmr, 0, sizeof(tmr));
-    GPIO_PinInit(BOARD_SW3_GPIO, 27U, &cp.gpio);
-    PRINTF("Starting CP...\r\n");
-    printf("CCS CP dutycycle = %f\r\n", cp.dutyCycle);
-
-    // TESTING
-    cp.enable = 1;
-
-    while (1) {
-
-        /* Interruption event from timer */
-        if (ftmIsrFlag) {
-            handle_CP_gen(&cp, &tmr);
-            GPIO_PinWrite(BOARD_SW3_GPIO, 27U, cp.output);
-            ftmIsrFlag = false;
-        }
-        __WFI();
-    }
 }
 
 void vApplicationStackOverflowHook( TaskHandle_t *pxTask, signed char *pcTaskName ){

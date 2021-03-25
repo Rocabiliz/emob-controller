@@ -138,38 +138,39 @@ void set_CP_dutycycle(struct cp_gen_t *cp, double dutyCycle) {
 /*!
  * @brief Handles the CP generation based on the mode. Multiple instances
  * of this function (in threads) may be running. It is assumed that the 'tmr'
- * interruption calls this function, which will clear the flag 'tmr.tmrFlag'
+ * interruption calls this function, which will clear the flag 'cp.tmrFlag'
  * in order to reset the timer count.
  */
-void handle_CP_gen(struct cp_gen_t *cp, struct timer_t *tmr) {
+void handle_CP_gen(struct cp_gen_t *cp) {
+
+    uint32_t dutycycle_steps = 0;
 
     if (cp->enable) {
-
+        
         switch (cp->mode) {
         case UNDEFINED:
-            tmr->counter = 0;
+            cp->counter = 0;
             cp->output = 0;
             break;
 
         /* CCS AC and DC apply a simple PWM */
         case CCS_AC:
         case CCS_DC:
-            tmr->counter++;
-
-            //printf("CCS CP counter = %d\r\n", tmr->counter);
-            //printf("Counter calc: %d\r\n",  (uint32_t)((cp->dutyCycle * 0.01 * cp->samplingFreq) / cp->freq));
+            dutycycle_steps = (uint32_t)((cp->dutyCycle * cp->samplingFreq) / (100 * cp->freq));
+            cp->counter++;
 
             /* Dutycycle pulse */
-            if (tmr->counter <= (uint32_t)((cp->dutyCycle * 0.01 * cp->samplingFreq) / cp->freq)) { // + 1??
+            if (cp->counter < dutycycle_steps + 1) {
                 cp->output = 1;
             }
             /* Remainder of the wave */
-            else if (tmr->counter <= (uint32_t)(cp->samplingFreq / cp->freq)) { // + 1??
+            else if (cp->counter < (uint32_t)(cp->samplingFreq / cp->freq)) {
                 cp->output = 0;
             }
             /* Full period: reset counter*/
             else {
-            	tmr->counter = 0;
+                cp->output = 0;
+            	cp->counter = 0;
             }
 
             break;
@@ -178,7 +179,7 @@ void handle_CP_gen(struct cp_gen_t *cp, struct timer_t *tmr) {
     }
     else {
         cp->output = 0;
-        tmr->counter = 0;
+        cp->counter = 0;
     }
 
     return;

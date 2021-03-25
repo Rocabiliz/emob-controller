@@ -61,7 +61,7 @@ instance:
       - clockSource: 'kFTM_SystemClock'
       - clockSourceFreq: 'GetFreq'
       - prescale: 'kFTM_Prescale_Divide_1'
-      - timerFrequency: '20000'
+      - timerFrequency: '100000'
       - bdmMode: 'kFTM_BdmMode_0'
       - pwmSyncMode: 'kFTM_SoftwareTrigger'
       - reloadPoints: ''
@@ -102,7 +102,7 @@ const ftm_config_t FTM0_config = {
 
 void FTM0_init(void) {
   FTM_Init(FTM0_PERIPHERAL, &FTM0_config);
-  FTM_SetTimerPeriod(FTM0_PERIPHERAL, ((FTM0_CLOCK_SOURCE/ (1U << (FTM0_PERIPHERAL->SC & FTM_SC_PS_MASK))) / 20000) + 1);
+  FTM_SetTimerPeriod(FTM0_PERIPHERAL, ((FTM0_CLOCK_SOURCE/ (1U << (FTM0_PERIPHERAL->SC & FTM_SC_PS_MASK))) / 100000) + 1);
   FTM_EnableInterrupts(FTM0_PERIPHERAL, kFTM_TimeOverflowInterruptEnable);
   /* Enable interrupt FTM0_IRQn request in the NVIC */
   EnableIRQ(FTM0_IRQN);
