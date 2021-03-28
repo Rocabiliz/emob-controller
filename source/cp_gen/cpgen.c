@@ -7,6 +7,7 @@
 
 #include "cpgen.h"
 #include <string.h>
+#include "fsl_gpio.h"
 
 /* Assigns a specific output to a new instance of a cp_gen, setups a specific timer */
 
@@ -85,13 +86,15 @@ ccs_cp_state_t calc_CP_state(double cpVoltage) {
 /*!
  * @brief Initializes a CP struct with the configuration
  */
-void CP_init(struct cp_gen_t *cp, charge_mode_t mode, double freq, double dutyCycle, double taskIntFreq) {
+void CP_init(struct cp_gen_t *cp, charge_mode_t mode, uint32_t pinNumber,
+            double freq, double dutyCycle, double taskIntFreq) {
 
     cp->mode = (uint8_t)mode;
     cp->freq = freq;
     cp->samplingFreq = taskIntFreq;
     cp->gpio.pinDirection = kGPIO_DigitalOutput;
     cp->gpio.outputLogic = 0; 
+    GPIO_PinInit(BOARD_SW3_GPIO, pinNumber, &cp->gpio);
 
     switch (mode) {
     case UNDEFINED:

@@ -72,7 +72,7 @@
  * Variables
  ******************************************************************************/
 struct charge_session_t charge_session;
-struct cp_gen_t cp1;
+struct cp_gen_t cp1, cp2;
 
 /* IP address configuration. */
 #define configIP_ADDR0 192
@@ -110,13 +110,18 @@ static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;
 /* FS data.*/
 
 /*!
-* @brief Function for handling FTM0 timer interrupt
-* This particular timer will generate the Control Pilot PWM signals
+ * @brief Function for handling FTM0 timer interrupt
+ * This particular timer will generate the Control Pilot PWM signals
  */
 void FTM0_IRQHANDLER(void) {
     
+    // Control Pilot 1
     handle_CP_gen(&cp1);
     GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_1_PIN, cp1.output);
+
+    // Control Pilot 2
+    handle_CP_gen(&cp2);
+    GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_2_PIN, cp2.output);
 
     /* Clear interrupt flag.*/
     FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
@@ -137,9 +142,11 @@ int main(void) {
     BOARD_InitBootPeripherals();
 
     /* Control Pilots Initialization */
-    CP_init(&cp1, CCS_DC, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
-    GPIO_PinInit(BOARD_SW3_GPIO, 27U, &cp1.gpio);
+    CP_init(&cp1, CCS_DC, CONTROL_PILOT_1_PIN, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
     cp1.enable = 1; // testing!
+
+    CP_init(&cp2, CCS_AC, CONTROL_PILOT_2_PIN, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
+    cp2.enable = 1; // testing!
 
     /* Disable SYSMPU. */
     base->CESR &= ~SYSMPU_CESR_VLD_MASK;

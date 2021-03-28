@@ -65,7 +65,7 @@ struct cp_gen_t {
 double calc_ccs_ac_dutycyle(double maxAcCurr);
 double calc_ccs_pp_max_curr(double PPresistance, uint8_t nbPhases);
 ccs_cp_state_t calc_CP_state(double cp_voltage);
-void CP_init(struct cp_gen_t *cp, charge_mode_t mode, double freq, double dutyCycle, double taskIntFreq);
+void CP_init(struct cp_gen_t *cp, charge_mode_t mode, uint32_t pinNumber, double freq, double dutyCycle, double taskIntFreq);
 void set_CP_freq(struct cp_gen_t *cp, double freq);
 void set_CP_dutycycle(struct cp_gen_t *cp, double dutyCycle);
 void handle_CP_gen(struct cp_gen_t *cp);
