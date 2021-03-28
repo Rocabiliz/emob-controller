@@ -880,8 +880,8 @@ netconn_recv(struct netconn *conn, struct netbuf **new_buf)
     if (buf == NULL) {
       return ERR_MEM;
     }
-    err = netconn_recv_data_tcp(conn, &p, 0);
 
+    err = netconn_recv_data_tcp(conn, &p, 0);
     if (err != ERR_OK) {
       memp_free(MEMP_NETBUF, buf);
       return err;

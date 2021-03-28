@@ -413,6 +413,7 @@ TickType_t xStartTime, xEndTime, xElapsed;
 unsigned long ulReturn;
 
     xStartTime = xTaskGetTickCount();
+
     if( ulTimeout != 0UL )
     {
         if( xSemaphoreTake( *pxSemaphore, ulTimeout / portTICK_PERIOD_MS ) == pdTRUE )
@@ -428,9 +429,7 @@ unsigned long ulReturn;
     }
     else
     {
-
         while( xSemaphoreTake( *pxSemaphore, portMAX_DELAY ) != pdTRUE );
-
         xEndTime = xTaskGetTickCount();
         xElapsed = ( xEndTime - xStartTime ) * portTICK_PERIOD_MS;
 
