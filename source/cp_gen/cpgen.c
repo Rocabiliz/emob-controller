@@ -8,6 +8,11 @@
 #include "cpgen.h"
 #include <string.h>
 #include "fsl_gpio.h"
+#include "fsl_adc16.h"
+#include "device/MK66F18.h"
+#include "fsl_debug_console.h"
+
+const uint32_t g_Adc16_12bitFullRange = 4096U;
 
 /* Assigns a specific output to a new instance of a cp_gen, setups a specific timer */
 
@@ -187,3 +192,55 @@ void handle_CP_gen(struct cp_gen_t *cp) {
 
     return;
 }
+
+void PP_init(struct pp_t *pp, uint32_t channelNb) {
+    adc16_config_t adc16ConfigStruct;
+
+    ADC16_GetDefaultConfig(&adc16ConfigStruct);
+#ifdef BOARD_ADC_USE_ALT_VREF
+    adc16ConfigStruct.referenceVoltageSource = kADC16_ReferenceVoltageSourceValt;
+#endif
+    ADC16_Init(DEMO_ADC16_BASE, &adc16ConfigStruct);
+    ADC16_EnableHardwareTrigger(DEMO_ADC16_BASE, false); /* Make sure the software trigger is used. */
+#if defined(FSL_FEATURE_ADC16_HAS_CALIBRATION) && FSL_FEATURE_ADC16_HAS_CALIBRATION
+    if (kStatus_Success == ADC16_DoAutoCalibration(DEMO_ADC16_BASE)) {
+        PRINTF("ADC16_DoAutoCalibration() Done.\r\n");
+    }
+    else {
+        PRINTF("ADC16_DoAutoCalibration() Failed.\r\n");
+    }
+#endif /* FSL_FEATURE_ADC16_HAS_CALIBRATION */
+
+    PRINTF("ADC Full Range: %d\r\n", g_Adc16_12bitFullRange);
+    PRINTF("Press any key to get user channel's ADC value ...\r\n");
+
+    pp->ppAdc.channelNumber                        = channelNb;
+    pp->ppAdc.enableInterruptOnConversionCompleted = false;
+#if defined(FSL_FEATURE_ADC16_HAS_DIFF_MODE) && FSL_FEATURE_ADC16_HAS_DIFF_MODE
+    pp->ppAdc.enableDifferentialConversion = false;
+#endif /* FSL_FEATURE_ADC16_HAS_DIFF_MODE */
+
+    pp->enable = 1;
+
+    return;
+}
+
+void PP_get_voltage(struct pp_t *pp) {
+
+    if (pp->enable) {
+        ADC16_SetChannelConfig(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP, &pp->ppAdc);
+        while (0U == (kADC16_ChannelConversionDoneFlag &
+                        ADC16_GetChannelStatusFlags(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP))) {
+        }
+        //PRINTF("ADC Value: %d\r\n", ADC16_GetChannelConversionValue(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP));
+        pp->ppVoltage = ((double)ADC16_GetChannelConversionValue(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP)) * 3.3F / g_Adc16_12bitFullRange;
+        //PRINTF("PP VOLTAGE VALUE: %f\r\n", pp->ppVoltage);
+        //PRINTF("\r\n");
+    } 
+    else {
+        pp->ppVoltage = 0.0F;
+    }
+    return;
+}
+
+

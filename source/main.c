@@ -65,14 +65,16 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define BOARD_SW_GPIO BOARD_SW3_GPIO
-#define BOARD_SW_GPIO_PIN BOARD_SW3_GPIO_PIN
+
 
 /*******************************************************************************
  * Variables
  ******************************************************************************/
 struct charge_session_t charge_session;
 struct cp_gen_t cp1, cp2;
+struct pp_t pp1 = {
+    .enable = 0
+}, pp2;
 
 /* IP address configuration. */
 #define configIP_ADDR0 192
@@ -123,6 +125,12 @@ void FTM0_IRQHANDLER(void) {
     handle_CP_gen(&cp2);
     GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_2_PIN, cp2.output);
 
+    // Proximity Pilot 1
+    PP_get_voltage(&pp1);
+
+    // Proximity Pilot 2
+    PP_get_voltage(&pp2);
+
     /* Clear interrupt flag.*/
     FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
 }
@@ -147,6 +155,10 @@ int main(void) {
 
     CP_init(&cp2, CCS_AC, CONTROL_PILOT_2_PIN, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
     cp2.enable = 1; // testing!
+
+    /* Proximity Pilots Initilization */
+    PP_init(&pp1, PROXIMITY_PILOT_1_PIN);
+    PP_init(&pp2, PROXIMITY_PILOT_2_PIN);
 
     /* Disable SYSMPU. */
     base->CESR &= ~SYSMPU_CESR_VLD_MASK;

@@ -12,10 +12,18 @@
 #include "stdbool.h"
 #include "board.h"
 #include "fsl_gpio.h"
+#include "fsl_adc16.h"
 
 /* Pinout related */
+#define BOARD_SW_GPIO BOARD_SW3_GPIO
+#define BOARD_SW_GPIO_PIN BOARD_SW3_GPIO_PIN
+#define DEMO_ADC16_BASE ADC0
+#define DEMO_ADC16_CHANNEL_GROUP 0U
+
 #define CONTROL_PILOT_1_PIN 27U
 #define CONTROL_PILOT_2_PIN 26U
+#define PROXIMITY_PILOT_1_PIN 19U
+#define PROXIMITY_PILOT_2_PIN 27U
 
 /* CP related defines */
 #define MIN_CP_FREQ 0
@@ -59,6 +67,12 @@ struct cp_gen_t {
     gpio_pin_config_t gpio;
 };
 
+struct pp_t {
+    double ppVoltage;
+    adc16_channel_config_t ppAdc;
+    bool enable;
+};
+
 
 /* Functions */
 /* CCS related structures and functions */
@@ -69,5 +83,7 @@ void CP_init(struct cp_gen_t *cp, charge_mode_t mode, uint32_t pinNumber, double
 void set_CP_freq(struct cp_gen_t *cp, double freq);
 void set_CP_dutycycle(struct cp_gen_t *cp, double dutyCycle);
 void handle_CP_gen(struct cp_gen_t *cp);
+void PP_init(struct pp_t *pp, uint32_t channelNb);
+void PP_get_voltage(struct pp_t *pp);
 
 #endif /* CP_GEN_CPGEN_H_ */

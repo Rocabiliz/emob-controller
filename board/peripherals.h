@@ -10,6 +10,7 @@
  * Included files
  **********************************************************************************************************************/
 #include "fsl_common.h"
+#include "fsl_adc16.h"
 #include "fsl_clock.h"
 #include "fsl_ftm.h"
 #include "fsl_uart.h"
@@ -22,6 +23,12 @@ extern "C" {
  * Definitions
  **********************************************************************************************************************/
 /* Definitions for BOARD_InitPeripherals functional group */
+/* Alias for ADC0 peripheral */
+#define ADC0_PERIPHERAL ADC0
+/* ADC0 interrupt vector ID (number). */
+#define ADC0_IRQN ADC0_IRQn
+/* ADC0 interrupt handler identifier. */
+#define ADC0_IRQHANDLER ADC0_IRQHandler
 /* Definition of peripheral ID */
 #define FTM0_PERIPHERAL FTM0
 /* Definition of the clock source frequency */
@@ -38,6 +45,9 @@ extern "C" {
 /***********************************************************************************************************************
  * Global variables
  **********************************************************************************************************************/
+extern const adc16_config_t ADC0_config;
+extern const adc16_channel_mux_mode_t ADC0_muxMode;
+extern const adc16_hardware_average_mode_t ADC0_hardwareAverageMode;
 extern const ftm_config_t FTM0_config;
 extern const uart_config_t UART0_config;
 
