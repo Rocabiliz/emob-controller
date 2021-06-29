@@ -111,6 +111,12 @@ void BOARD_InitBootPins(void);
   @{ */
 /* @} */
 
+/*! @name PORTA4 (coord L7), J3[5]/LLWU_P3/FTM0_CH1/NMI
+  @{ */
+#define BOARD_INITPINS_NMI_PORT PORTA /*!<@brief PORT device name: PORTA */
+#define BOARD_INITPINS_NMI_PIN 4U     /*!<@brief PORTA pin index: 4 */
+                                      /* @} */
+
 /*!
  * @brief Configures pin routing and optionally pin electrical features.
  *

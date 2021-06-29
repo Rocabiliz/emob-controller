@@ -32,9 +32,11 @@ extern "C" {
 /* Definition of peripheral ID */
 #define FTM0_PERIPHERAL FTM0
 /* Definition of the clock source frequency */
-#define FTM0_CLOCK_SOURCE CLOCK_GetFreq(kCLOCK_BusClk)
+#define FTM0_CLOCK_SOURCE 60000000UL
 /* FTM0 interrupt vector ID (number). */
 #define FTM0_IRQN FTM0_IRQn
+/* FTM0 interrupt vector priority. */
+#define FTM0_IRQ_PRIORITY 3
 /* FTM0 interrupt handler identifier. */
 #define FTM0_IRQHANDLER FTM0_IRQHandler
 /* Definition of peripheral ID */

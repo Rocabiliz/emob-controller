@@ -11,6 +11,10 @@
 #include "fsl_adc16.h"
 #include "device/MK66F18.h"
 #include "fsl_debug_console.h"
+#include "lwip/sys.h"
+#include "peripherals.h"
+
+extern struct pp_t pp1, pp2;
 
 const uint32_t g_Adc16_12bitFullRange = 4096U;
 
@@ -193,6 +197,21 @@ void handle_CP_gen(struct cp_gen_t *cp) {
     return;
 }
 
+void PP_get_voltage(struct pp_t *pp) {
+
+    ADC16_SetChannelConfig(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP, &pp->ppAdc);
+    while ((   kADC16_ChannelConversionDoneFlag &
+            ADC16_GetChannelStatusFlags(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP)) == 0U) {
+    }
+
+    //PRINTF("ADC Value: %d\r\n", ADC16_GetChannelConversionValue(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP));
+    pp->ppVoltage = ((double)ADC16_GetChannelConversionValue(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP)) * 3.3F / g_Adc16_12bitFullRange;
+    
+    PRINTF("PP VOLTAGE VALUE: %f\r\n", pp->ppVoltage);
+
+    return;
+}
+
 void PP_init(struct pp_t *pp, uint32_t channelNb) {
     adc16_config_t adc16ConfigStruct;
 
@@ -212,7 +231,6 @@ void PP_init(struct pp_t *pp, uint32_t channelNb) {
 #endif /* FSL_FEATURE_ADC16_HAS_CALIBRATION */
 
     PRINTF("ADC Full Range: %d\r\n", g_Adc16_12bitFullRange);
-    PRINTF("Press any key to get user channel's ADC value ...\r\n");
 
     pp->ppAdc.channelNumber                        = channelNb;
     pp->ppAdc.enableInterruptOnConversionCompleted = false;
@@ -220,27 +238,43 @@ void PP_init(struct pp_t *pp, uint32_t channelNb) {
     pp->ppAdc.enableDifferentialConversion = false;
 #endif /* FSL_FEATURE_ADC16_HAS_DIFF_MODE */
 
-    pp->enable = 1;
-
-    return;
+    if (sys_thread_new("handle_pp_voltage", handle_pp_voltage, NULL, 200, 5) == NULL) {
+		PRINTF("ProximityPilot thread failed\r\n");
+	}
 }
 
-void PP_get_voltage(struct pp_t *pp) {
+static void handle_pp_voltage(void *arg) {
+    
+    TickType_t xStart, xEnd, xDifference;
+    PRINTF("## STARTING PP READING ##\r\n");
+	while (1) {
+		xStart = xTaskGetTickCount();
+		vTaskDelay(pdMS_TO_TICKS(PP_READ_VOLT_PERIOD));
 
-    if (pp->enable) {
-        ADC16_SetChannelConfig(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP, &pp->ppAdc);
-        while (0U == (kADC16_ChannelConversionDoneFlag &
-                        ADC16_GetChannelStatusFlags(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP))) {
+        static uint8_t dutyCycle = 0;
+        if (dutyCycle >= 89) {
+            dutyCycle = 0;
         }
-        //PRINTF("ADC Value: %d\r\n", ADC16_GetChannelConversionValue(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP));
-        pp->ppVoltage = ((double)ADC16_GetChannelConversionValue(DEMO_ADC16_BASE, DEMO_ADC16_CHANNEL_GROUP)) * 3.3F / g_Adc16_12bitFullRange;
-        //PRINTF("PP VOLTAGE VALUE: %f\r\n", pp->ppVoltage);
-        //PRINTF("\r\n");
-    } 
-    else {
-        pp->ppVoltage = 0.0F;
-    }
-    return;
+        else {
+            dutyCycle = dutyCycle + 10;
+        }
+        FTM_DisableInterrupts(FTM0_PERIPHERAL, kFTM_TimeOverflowInterruptEnable);
+        FTM_UpdateChnlEdgeLevelSelect(FTM0_PERIPHERAL, kFTM_Chnl_1, 0U);
+        FTM_UpdatePwmDutycycle(FTM0_PERIPHERAL, kFTM_Chnl_1, kFTM_EdgeAlignedPwm, dutyCycle);
+        FTM_SetSoftwareTrigger(FTM0_PERIPHERAL, true);
+        FTM_UpdateChnlEdgeLevelSelect(FTM0_PERIPHERAL, kFTM_Chnl_1, kFTM_HighTrue);
+        FTM_EnableInterrupts(FTM0_PERIPHERAL, kFTM_TimeOverflowInterruptEnable);
+
+        // Proximity Pilot 1
+        PP_get_voltage(&pp1);
+
+        // Proximity Pilot 2
+        PP_get_voltage(&pp2);
+
+		xEnd = xTaskGetTickCount();
+		xDifference = xEnd - xStart;
+	}
+
+    vTaskDelete(NULL);
+
 }
-
-

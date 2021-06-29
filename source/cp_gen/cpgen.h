@@ -25,6 +25,9 @@
 #define PROXIMITY_PILOT_1_PIN 19U
 #define PROXIMITY_PILOT_2_PIN 27U
 
+/* PP related defined */
+#define PP_READ_VOLT_PERIOD 500UL // in ms
+
 /* CP related defines */
 #define MIN_CP_FREQ 0
 #define MAX_CP_FREQ 2000
@@ -70,7 +73,6 @@ struct cp_gen_t {
 struct pp_t {
     double ppVoltage;
     adc16_channel_config_t ppAdc;
-    bool enable;
 };
 
 
@@ -85,5 +87,6 @@ void set_CP_dutycycle(struct cp_gen_t *cp, double dutyCycle);
 void handle_CP_gen(struct cp_gen_t *cp);
 void PP_init(struct pp_t *pp, uint32_t channelNb);
 void PP_get_voltage(struct pp_t *pp);
+static void handle_pp_voltage(void *arg);
 
 #endif /* CP_GEN_CPGEN_H_ */

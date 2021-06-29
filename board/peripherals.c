@@ -126,9 +126,9 @@ instance:
   - ftm_main_config:
     - ftm_config:
       - clockSource: 'kFTM_SystemClock'
-      - clockSourceFreq: 'GetFreq'
+      - clockSourceFreq: 'BOARD_BootClockRUN'
       - prescale: 'kFTM_Prescale_Divide_1'
-      - timerFrequency: '100000'
+      - timerFrequency: '1000'
       - bdmMode: 'kFTM_BdmMode_0'
       - pwmSyncMode: 'kFTM_SoftwareTrigger'
       - reloadPoints: ''
@@ -144,12 +144,19 @@ instance:
     - enable_irq: 'true'
     - ftm_interrupt:
       - IRQn: 'FTM0_IRQn'
-      - enable_priority: 'false'
-      - priority: '0'
+      - enable_priority: 'true'
+      - priority: '3'
       - enable_custom_name: 'false'
     - EnableTimerInInit: 'true'
   - ftm_edge_aligned_mode:
-    - ftm_edge_aligned_channels_config: []
+    - ftm_edge_aligned_channels_config:
+      - 0:
+        - edge_aligned_mode: 'kFTM_EdgeAlignedPwm'
+        - edge_aligned_pwm:
+          - chnlNumber: 'kFTM_Chnl_1'
+          - level: 'kFTM_HighTrue'
+          - dutyCyclePercent: '5'
+          - enable_chan_irq: 'false'
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
 /* clang-format on */
 const ftm_config_t FTM0_config = {
@@ -167,10 +174,20 @@ const ftm_config_t FTM0_config = {
   .useGlobalTimeBase = false
 };
 
+const ftm_chnl_pwm_signal_param_t FTM0_pwmSignalParams[] = { 
+  {
+    .chnlNumber = kFTM_Chnl_1,
+    .level = kFTM_HighTrue,
+    .dutyCyclePercent = 5
+  }
+};
+
 void FTM0_init(void) {
   FTM_Init(FTM0_PERIPHERAL, &FTM0_config);
-  FTM_SetTimerPeriod(FTM0_PERIPHERAL, ((FTM0_CLOCK_SOURCE/ (1U << (FTM0_PERIPHERAL->SC & FTM_SC_PS_MASK))) / 100000) + 1);
+  FTM_SetupPwm(FTM0_PERIPHERAL, FTM0_pwmSignalParams, sizeof(FTM0_pwmSignalParams) / sizeof(ftm_chnl_pwm_signal_param_t), kFTM_EdgeAlignedPwm, 1000U, FTM0_CLOCK_SOURCE);
   FTM_EnableInterrupts(FTM0_PERIPHERAL, kFTM_TimeOverflowInterruptEnable);
+  /* Interrupt vector FTM0_IRQn priority settings in the NVIC */
+  NVIC_SetPriority(FTM0_IRQN, FTM0_IRQ_PRIORITY);
   /* Enable interrupt FTM0_IRQn request in the NVIC */
   EnableIRQ(FTM0_IRQN);
   FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);

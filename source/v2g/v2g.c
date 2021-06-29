@@ -2131,21 +2131,11 @@ void v2g_init() {
 	}    
 
 	// V2G Thread
-    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 2) == NULL) { // 7000
+    if (sys_thread_new("v2g_session", v2g_session, NULL, 7000, 5) == NULL) { // 7000
 		PRINTF("V2G thread failed\r\n");
 	}
 	/* Quick calculations: 
 	- 40KB for V2G/TCP
 	- 32KB for mbedtls
 	*/
-}
-
-void sdp_init() {
-	PRINTF("SDP_INIT\r\n");
-	
-	// SDP Thread
-	if (sys_thread_new("sdp_session", secc_discovery_protocol, NULL, 300, 1) == NULL) {
-		PRINTF("SDP thread failed\r\n");
-	}
-	// ~10KB
 }

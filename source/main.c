@@ -72,9 +72,7 @@
  ******************************************************************************/
 struct charge_session_t charge_session;
 struct cp_gen_t cp1, cp2;
-struct pp_t pp1 = {
-    .enable = 0
-}, pp2;
+struct pp_t pp1, pp2;
 
 /* IP address configuration. */
 #define configIP_ADDR0 192
@@ -116,20 +114,28 @@ static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;
  * This particular timer will generate the Control Pilot PWM signals
  */
 void FTM0_IRQHANDLER(void) {
-    
+
     // Control Pilot 1
-    handle_CP_gen(&cp1);
-    GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_1_PIN, cp1.output);
+    //handle_CP_gen(&cp1);
+    /*static uint8_t dutyCycle = 0;
+
+    if (dutyCycle >= 49) {
+        dutyCycle = 0;
+    }
+    else {
+        dutyCycle++;
+    }
+    dutyCycle = 5;
+    //GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_1_PIN, cp1.output);
+    FTM_DisableInterrupts(FTM0_PERIPHERAL, kFTM_Chnl1InterruptEnable);
+    FTM_UpdatePwmDutycycle(FTM0_PERIPHERAL, kFTM_Chnl_1, kFTM_CenterAlignedPwm, dutyCycle);
+    FTM_SetSoftwareTrigger(FTM0_PERIPHERAL, true);
+    FTM_UpdateChnlEdgeLevelSelect(FTM0_PERIPHERAL, kFTM_Chnl_1, kFTM_HighTrue);
+    FTM_EnableInterrupts(FTM0_PERIPHERAL, kFTM_Chnl1InterruptEnable);*/
 
     // Control Pilot 2
-    handle_CP_gen(&cp2);
-    GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_2_PIN, cp2.output);
-
-    // Proximity Pilot 1
-    PP_get_voltage(&pp1);
-
-    // Proximity Pilot 2
-    PP_get_voltage(&pp2);
+    //handle_CP_gen(&cp2);
+    //GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_2_PIN, cp2.output);
 
     /* Clear interrupt flag.*/
     FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
@@ -155,10 +161,6 @@ int main(void) {
 
     CP_init(&cp2, CCS_AC, CONTROL_PILOT_2_PIN, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
     cp2.enable = 1; // testing!
-
-    /* Proximity Pilots Initilization */
-    PP_init(&pp1, PROXIMITY_PILOT_1_PIN);
-    PP_init(&pp2, PROXIMITY_PILOT_2_PIN);
 
     /* Disable SYSMPU. */
     base->CESR &= ~SYSMPU_CESR_VLD_MASK;
@@ -207,6 +209,10 @@ int main(void) {
 
     //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
     v2g_init();
+
+    /* Proximity Pilots Initilization */
+    PP_init(&pp1, PROXIMITY_PILOT_1_PIN);
+    //PP_init(&pp2, PROXIMITY_PILOT_2_PIN);
 
     /* run RTOS */
     vTaskStartScheduler();

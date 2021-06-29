@@ -53,7 +53,6 @@ struct __attribute__((packed)) sdp_res_t {
 
 // Functions
 void v2g_init();
-void sdp_init();
 double v2g_physical_val_get(struct v2gPhysicalValueType val1);
 bool check_ev_session_id(struct v2gMessageHeaderType v2gHeader);
 void supported_app_protocol_req(bitstream_t *stream);

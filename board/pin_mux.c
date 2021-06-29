@@ -54,6 +54,7 @@ BOARD_InitPins:
   - {pin_num: J10, peripheral: GPIOA, signal: 'GPIO, 27', pin_signal: PTA27/MII0_CRS/FB_A26}
   - {pin_num: J11, peripheral: GPIOA, signal: 'GPIO, 26', pin_signal: PTA26/MII0_TXD3/FB_A27}
   - {pin_num: L2, peripheral: ADC0, signal: 'DM, 0', pin_signal: ADC0_DM0/ADC1_DM3}
+  - {pin_num: L7, peripheral: FTM0, signal: 'CH, 1', pin_signal: TSI0_CH5/PTA4/LLWU_P3/FTM0_CH1/NMI_b/EZP_CS_b}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 /* clang-format on */
@@ -96,6 +97,9 @@ void BOARD_InitPins(void)
 
     /* PORTA27 (pin J10) is configured as PTA27 */
     PORT_SetPinMux(BOARD_INITPINS_FB_A26_PORT, BOARD_INITPINS_FB_A26_PIN, kPORT_MuxAsGpio);
+
+    /* PORTA4 (pin L7) is configured as FTM0_CH1 */
+    PORT_SetPinMux(BOARD_INITPINS_NMI_PORT, BOARD_INITPINS_NMI_PIN, kPORT_MuxAlt3);
 
     /* PORTA5 (pin M8) is configured as MII0_RXER */
     PORT_SetPinMux(BOARD_INITPINS_RMII0_RXER_PORT, BOARD_INITPINS_RMII0_RXER_PIN, kPORT_MuxAlt4);
