@@ -37,7 +37,7 @@
 #include "fsl_gpio.h"
 
 /* Software components includes */
-#include "cp_gen/cpgen.h"
+#include "gpio/gpio.h"
 #include "slac/slac.h"
 #include "v2g/v2g.h"
 #include "charger/charger.h"
@@ -63,16 +63,12 @@
 #include "mbedtls/certs.h"
 
 /*******************************************************************************
- * Definitions
- ******************************************************************************/
-
-
-/*******************************************************************************
  * Variables
  ******************************************************************************/
 struct charge_session_t charge_session;
-struct cp_gen_t cp1, cp2;
+// Structures for GPIO
 struct pp_t pp1, pp2;
+struct cp_gen_t cp1, cp2;
 
 /* IP address configuration. */
 #define configIP_ADDR0 192
@@ -110,38 +106,6 @@ static mem_range_t non_dma_memory[] = NON_DMA_MEMORY_ARRAY;
 /* FS data.*/
 
 /*!
- * @brief Function for handling FTM0 timer interrupt
- * This particular timer will generate the Control Pilot PWM signals
- */
-void FTM0_IRQHANDLER(void) {
-
-    // Control Pilot 1
-    //handle_CP_gen(&cp1);
-    /*static uint8_t dutyCycle = 0;
-
-    if (dutyCycle >= 49) {
-        dutyCycle = 0;
-    }
-    else {
-        dutyCycle++;
-    }
-    dutyCycle = 5;
-    //GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_1_PIN, cp1.output);
-    FTM_DisableInterrupts(FTM0_PERIPHERAL, kFTM_Chnl1InterruptEnable);
-    FTM_UpdatePwmDutycycle(FTM0_PERIPHERAL, kFTM_Chnl_1, kFTM_CenterAlignedPwm, dutyCycle);
-    FTM_SetSoftwareTrigger(FTM0_PERIPHERAL, true);
-    FTM_UpdateChnlEdgeLevelSelect(FTM0_PERIPHERAL, kFTM_Chnl_1, kFTM_HighTrue);
-    FTM_EnableInterrupts(FTM0_PERIPHERAL, kFTM_Chnl1InterruptEnable);*/
-
-    // Control Pilot 2
-    //handle_CP_gen(&cp2);
-    //GPIO_PinWrite(BOARD_SW3_GPIO, CONTROL_PILOT_2_PIN, cp2.output);
-
-    /* Clear interrupt flag.*/
-    FTM_ClearStatusFlags(FTM0, kFTM_TimeOverflowFlag);
-}
-
-/*!
  * @brief Main function.
  */
 int main(void) {
@@ -154,13 +118,6 @@ int main(void) {
     BOARD_BootClockRUN();
     BOARD_InitDebugConsole();
     BOARD_InitBootPeripherals();
-
-    /* Control Pilots Initialization */
-    CP_init(&cp1, CCS_DC, CONTROL_PILOT_1_PIN, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
-    cp1.enable = 1; // testing!
-
-    CP_init(&cp2, CCS_AC, CONTROL_PILOT_2_PIN, CCS_CP_FREQ, 50, 100000); // sampling is interrupt frequency (> signal frequency)
-    cp2.enable = 1; // testing!
 
     /* Disable SYSMPU. */
     base->CESR &= ~SYSMPU_CESR_VLD_MASK;
@@ -207,13 +164,10 @@ int main(void) {
     // Load EVSE Charger configuration
     load_charger_config(&netif.ip6_addr[0].u_addr.ip6.addr); // 20kb
 
+    gpio_init();
     //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
     v2g_init();
-
-    /* Proximity Pilots Initilization */
-    PP_init(&pp1, PROXIMITY_PILOT_1_PIN);
-    //PP_init(&pp2, PROXIMITY_PILOT_2_PIN);
-
+    
     /* run RTOS */
     vTaskStartScheduler();
     PRINTF("OOOPS\r\n");

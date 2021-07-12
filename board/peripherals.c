@@ -145,7 +145,7 @@ instance:
     - ftm_interrupt:
       - IRQn: 'FTM0_IRQn'
       - enable_priority: 'true'
-      - priority: '3'
+      - priority: '5'
       - enable_custom_name: 'false'
     - EnableTimerInInit: 'true'
   - ftm_edge_aligned_mode:

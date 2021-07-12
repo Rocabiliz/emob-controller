@@ -47,6 +47,7 @@ struct charger_t {
     struct v2gChargeServiceType evse_charge_service;
     struct v2gPaymentOptionListType evse_payment_options;
     struct v2gServiceParameterListType evse_service_parameters;
+    uint8_t ac_nb_phases;
 };
 
 struct vehicle_t {

@@ -51,8 +51,6 @@ BOARD_InitPins:
     slew_rate: fast, open_drain: enable, drive_strength: low, pull_select: down, pull_enable: disable}
   - {pin_num: H9, peripheral: ENET, signal: MII_MDC, pin_signal: ADC0_SE9/ADC1_SE9/TSI0_CH6/PTB1/I2C0_SDA/FTM1_CH1/RMII0_MDC/MII0_MDC/SDRAM_RAS_b/FTM1_QD_PHB/TPM1_CH1}
   - {pin_num: K4, peripheral: ENET, signal: CLKIN_1588, pin_signal: PTE26/ENET_1588_CLKIN/UART4_CTS_b/RTC_CLKOUT/USB0_CLKIN}
-  - {pin_num: J10, peripheral: GPIOA, signal: 'GPIO, 27', pin_signal: PTA27/MII0_CRS/FB_A26}
-  - {pin_num: J11, peripheral: GPIOA, signal: 'GPIO, 26', pin_signal: PTA26/MII0_TXD3/FB_A27}
   - {pin_num: L2, peripheral: ADC0, signal: 'DM, 0', pin_signal: ADC0_DM0/ADC1_DM3}
   - {pin_num: L7, peripheral: FTM0, signal: 'CH, 1', pin_signal: TSI0_CH5/PTA4/LLWU_P3/FTM0_CH1/NMI_b/EZP_CS_b}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
@@ -91,12 +89,6 @@ void BOARD_InitPins(void)
 
     /* PORTA17 (pin K11) is configured as MII0_TXD1 */
     PORT_SetPinMux(BOARD_INITPINS_RMII0_TXD_1_PORT, BOARD_INITPINS_RMII0_TXD_1_PIN, kPORT_MuxAlt4);
-
-    /* PORTA26 (pin J11) is configured as PTA26 */
-    PORT_SetPinMux(BOARD_INITPINS_FB_A27_PORT, BOARD_INITPINS_FB_A27_PIN, kPORT_MuxAsGpio);
-
-    /* PORTA27 (pin J10) is configured as PTA27 */
-    PORT_SetPinMux(BOARD_INITPINS_FB_A26_PORT, BOARD_INITPINS_FB_A26_PIN, kPORT_MuxAsGpio);
 
     /* PORTA4 (pin L7) is configured as FTM0_CH1 */
     PORT_SetPinMux(BOARD_INITPINS_NMI_PORT, BOARD_INITPINS_NMI_PIN, kPORT_MuxAlt3);

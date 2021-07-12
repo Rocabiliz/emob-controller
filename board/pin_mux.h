@@ -93,20 +93,6 @@ void BOARD_InitBootPins(void);
 #define BOARD_INITPINS_RMII0_MDC_PIN 1U     /*!<@brief PORTB pin index: 1 */
                                             /* @} */
 
-/*! @name PORTA27 (coord J10), J3[1]/FB_A26
-  @{ */
-#define BOARD_INITPINS_FB_A26_GPIO GPIOA /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_FB_A26_PORT PORTA /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_FB_A26_PIN 27U    /*!<@brief PORTA pin index: 27 */
-                                         /* @} */
-
-/*! @name PORTA26 (coord J11), J3[3]/FB_A27
-  @{ */
-#define BOARD_INITPINS_FB_A27_GPIO GPIOA /*!<@brief GPIO device name: GPIOA */
-#define BOARD_INITPINS_FB_A27_PORT PORTA /*!<@brief PORT device name: PORTA */
-#define BOARD_INITPINS_FB_A27_PIN 26U    /*!<@brief PORTA pin index: 26 */
-                                         /* @} */
-
 /*! @name ADC0_DM0 (coord L2), J2[3]/ADC0_DM0_RC
   @{ */
 /* @} */
