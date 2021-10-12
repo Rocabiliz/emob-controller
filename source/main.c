@@ -42,6 +42,7 @@
 #include "v2g/v2g.h"
 #include "charger/charger.h"
 #include "webserver/webserver.h"
+#include "nvm/nvm.h"
 
 /* lwip include */
 #include "lwip/opt.h"
@@ -119,6 +120,8 @@ int main(void) {
     BOARD_InitDebugConsole();
     BOARD_InitBootPeripherals();
 
+    NVM_init();
+
     /* Disable SYSMPU. */
     base->CESR &= ~SYSMPU_CESR_VLD_MASK;
     /* Set RMII clock src. */
@@ -161,12 +164,20 @@ int main(void) {
            ((u8_t *)&netif_gw)[2], ((u8_t *)&netif_gw)[3]);
     PRINTF("************************************************\r\n");
   
+    /* NVM TESTS */
+    uint8_t buffer;
+    NVM_read(&buffer, sizeof(buffer));
+    buffer = buffer + 1;
+    NVM_write(&buffer, sizeof(buffer));
+    // THIS IS CHECKED IN WEBSERVER CGI EXAMPLE (Get)
+    /*************/
+
     // Load EVSE Charger configuration
     load_charger_config(&netif.ip6_addr[0].u_addr.ip6.addr); // 20kb
 
-    gpio_init();
-    //webserver_init(); // will only work with 222E0 HEAP size (140KB)~
-    v2g_init();
+    //gpio_init();
+    webserver_init(); // will only work with 222E0 HEAP size (140KB)~
+    //v2g_init();
     
     /* run RTOS */
     vTaskStartScheduler();

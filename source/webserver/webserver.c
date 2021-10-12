@@ -26,6 +26,8 @@
 #include "httpsrv.h"
 #include "mdns.h"
 
+#include "nvm/nvm.h"
+
 #ifndef HTTPD_DEBUG
 #define HTTPD_DEBUG LWIP_DBG_ON
 #endif
@@ -127,6 +129,12 @@ static int cgi_example(HTTPSRV_CGI_REQ_STRUCT *param) {
     if (param->request_method == HTTPSRV_REQ_GET)
     {
         char *c;
+        
+        /* NVM TESTS */
+        uint8_t buffer;
+        NVM_read(&buffer, sizeof(buffer));
+        sprintf(cgi_data, "%04d\r\n", buffer);
+        /************/
 
         /* Replace '+' with spaces. */
         while ((c = strchr(cgi_data, '+')) != NULL)
